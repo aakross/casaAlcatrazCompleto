@@ -1,0 +1,51 @@
+# ========================================================
+# DEPENDENCIAS (Se instalan con npm install)
+# ========================================================
+node_modules/
+*/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ========================================================
+# COMPILACIONES Y ENTREGABLES (Generados por npm run build)
+# ========================================================
+dist/
+*/dist/
+dist-ssr/
+*/dist-ssr/
+build/
+*.local
+
+# ========================================================
+# LOGS Y TEMPORALES
+# ========================================================
+logs/
+*.log
+*.pid
+*.seed
+*.pid.lock
+
+# ========================================================
+# EDITORES Y SISTEMA OPERATIVO
+# ========================================================
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ========================================================
+# ARCHIVOS DE ENTORNO
+# Se mantienen explícitamente para repositorios privados
+# ========================================================
+!.env
+!.env.*

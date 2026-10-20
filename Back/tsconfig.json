@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "target": "es2022",               // Versión de JS a la que compilará (puedes usar es2020, es2021, etc.)
+    "module": "node16",             // Define el sistema de módulos que ya mencionaste
+    "moduleResolution": "node16",       // Cómo Node.js resolverá tus imports
+    "rootDir": "./src",               // Carpeta donde pondrás tus archivos .ts
+    "outDir": "./dist",               // Carpeta donde se guardará el código JavaScript compilado
+    "esModuleInterop": true,          // Permite importar módulos de Node sin problemas
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,                   // Modo estricto activado (recomendado)
+    "skipLibCheck": true
+  },
+  "include": ["src/**/*"]             // Le indica a TS que compile todo dentro de src
+}

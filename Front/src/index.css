@@ -1,0 +1,32 @@
+@import url("https://googleapis.com");
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #1a3c34;
+  --color-secondary: #d4af37;
+  --color-tertiary: #f5f5f0;
+  --color-neutral: #2d2d2d;
+  --color-surface: #414846;
+  --color-error: #ba1a1a;
+  --color-surfacecontainer: #f6f3f2;
+  --color-ohsunny: #ff8a80;
+
+  --font-headline: "Playfair Display", serif;
+  --font-body: "Inter", sans-serif;
+  --font-label: "Inter", sans-serif;
+}
+
+/* Custom day button styling for DayPicker: Cuadrados con esquinas redondeadas */
+.rdp-root {
+  --rdp-day_button-border-radius: 10px !important;
+  --rdp-day_button-border: none !important;
+  --rdp-day-width: 44px !important;
+  --rdp-day-height: 44px !important;
+}
+
+.rdp-day_button,
+button.rdp-day_button {
+  border-radius: 10px !important;
+  -webkit-border-radius: 10px !important;
+  overflow: hidden !important;
+}

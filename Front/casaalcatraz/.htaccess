@@ -1,0 +1,10 @@
+RewriteEngine On
+RewriteBase /casaalcatraz/
+
+# Si el archivo o carpeta que pide el navegador existe físicamente, entrégalo
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Si es una ruta virtual de React Router (como /login), mándalo al index.html local
+RewriteRule . index.html [L]
