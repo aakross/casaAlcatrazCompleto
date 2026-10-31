@@ -12,12 +12,14 @@ import {
   ChevronDown,
   BarChart3,
   Building2,
+  ShieldCheck,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
 export function AdminLayout() {
   const username = useAuthStore((state) => state.username);
   const logout = useAuthStore((state) => state.logout);
+  const hasPermission = useAuthStore((state) => state.hasPermission);
   const location = useLocation();
   const navigate = useNavigate();
   const [menuAbierto, setMenuAbierto] = useState(false);
@@ -28,17 +30,21 @@ export function AdminLayout() {
     navigate("/login");
   };
 
-  // Configuración de los botones de navegación
-  const menuItems = [
-    { name: "Reservas", path: "/reservas", icon: Calendar },
-    { name: "Pagos", path: "/pagos", icon: HandCoins },
-    { name: "Cortes", path: "/cortes", icon: ReceiptText },
-    { name: "Estado de Resultados", path: "/estado-resultados", icon: BarChart3 },
+  // Configuración de los botones de navegación con clave de módulo
+  const allMenuItems = [
+    { name: "Reservas", path: "/reservas", icon: Calendar, clave: "RESERVAS" },
+    { name: "Pagos", path: "/pagos", icon: HandCoins, clave: "PAGOS" },
+    { name: "Cortes", path: "/cortes", icon: ReceiptText, clave: "CORTES" },
+    { name: "Estado de Resultados", path: "/estado-resultados", icon: BarChart3, clave: "ESTADO_RESULTADOS" },
     ...(import.meta.env.VITE_ENABLE_RENTAS === "true"
-      ? [{ name: "Control de Rentas", path: "/rentas", icon: Building2 }]
+      ? [{ name: "Control de Rentas", path: "/rentas", icon: Building2, clave: "RENTAS" }]
       : []),
-    // { name: "Reportes", path: "/reporteador", icon: ClipboardMinus },
+    { name: "Permisos", path: "/permisos", icon: ShieldCheck, clave: "PERMISOS" },
   ];
+
+  // 🛡️ Filtro estricto: Solo renderizar los módulos permitidos (ocultación total)
+  const menuItems = allMenuItems.filter((item) => hasPermission(item.clave));
+  const puedeVerReportes = hasPermission("REPORTES");
 
   useEffect(() => {
     if (location.pathname.startsWith("/reporteador")) {
@@ -100,7 +106,7 @@ export function AdminLayout() {
 
           {/* Menú de Opciones */}
           <nav className="space-y-2">
-            {/* 1. Render de las pestañas normales */}
+            {/* 1. Render de las pestañas autorizadas únicamente */}
             {menuItems.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path;
@@ -124,71 +130,73 @@ export function AdminLayout() {
               );
             })}
 
-            {/* 🌟 2. BOTÓN PADRE DE REPORTES (CON DESPLEGABLE) */}
-            <div className="w-full flex flex-col">
-              <button
-                type="button"
-                onClick={() => setIsReportesOpen(!isReportesOpen)}
-                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all font-medium text-sm group border-l-4 cursor-pointer ${
-                  isReportesActive
-                    ? "bg-white/10 text-secondary font-bold border-secondary"
-                    : "hover:bg-white/5 text-white/80 hover:text-white border-transparent"
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <ClipboardMinus
-                    className={`w-5 h-5 transition-transform group-hover:scale-110 ${isReportesActive ? "text-secondary" : "text-secondary/60"}`}
+            {/* 🌟 2. BOTÓN PADRE DE REPORTES (CON DESPLEGABLE) - RENDERIZADO SOLO SI TIENE PERMISO */}
+            {puedeVerReportes && (
+              <div className="w-full flex flex-col">
+                <button
+                  type="button"
+                  onClick={() => setIsReportesOpen(!isReportesOpen)}
+                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all font-medium text-sm group border-l-4 cursor-pointer ${
+                    isReportesActive
+                      ? "bg-white/10 text-secondary font-bold border-secondary"
+                      : "hover:bg-white/5 text-white/80 hover:text-white border-transparent"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <ClipboardMinus
+                      className={`w-5 h-5 transition-transform group-hover:scale-110 ${isReportesActive ? "text-secondary" : "text-secondary/60"}`}
+                    />
+                    <span>Reportes</span>
+                  </div>
+                  {/* Flecha con animación de rotación */}
+                  <ChevronDown
+                    className={`w-4 h-4 text-secondary/70 transition-transform duration-200 ${isReportesOpen ? "rotate-180" : ""}`}
                   />
-                  <span>Reportes</span>
+                </button>
+
+                {/* 🌟 3. SUBMENÚ DESPLEGABLE CON ANIMACIÓN DE ALTURA */}
+                <div
+                  className={`overflow-hidden transition-all duration-300 flex flex-col pl-9 mt-1 space-y-1 ${isReportesOpen ? "max-h-32 opacity-100" : "max-h-0 opacity-0 pointer-events-none"}`}
+                >
+                  {/* Subopción A: Calendario de Reservas */}
+                  <Link
+                    to="/reporteador/calendario"
+                    onClick={() => setMenuAbierto(false)}
+                    className={`px-3 py-2 text-xs rounded-lg transition-colors font-medium ${
+                      isCalendarioActive
+                        ? "text-secondary font-bold bg-white/5"
+                        : "text-white/60 hover:text-white hover:bg-white/5"
+                    }`}
+                  >
+                    • Calendario de reservas
+                  </Link>
+
+                  {/* Subopción B: Listado de Reservas */}
+                  <Link
+                    to="/reporteador/listado"
+                    onClick={() => setMenuAbierto(false)}
+                    className={`px-3 py-2 text-xs rounded-lg transition-colors font-medium ${
+                      isListadoActive
+                        ? "text-secondary font-bold bg-white/5"
+                        : "text-white/60 hover:text-white hover:bg-white/5"
+                    }`}
+                  >
+                    • Listado de reservas
+                  </Link>
+                  <Link
+                    to="/reporteador/bitacora"
+                    onClick={() => setMenuAbierto(false)}
+                    className={`px-3 py-2 text-xs rounded-lg transition-colors font-medium ${
+                      isBitacoraActive
+                        ? "text-secondary font-bold bg-white/5"
+                        : "text-white/60 hover:text-white hover:bg-white/5"
+                    }`}
+                  >
+                    • Bitácora de auditoría
+                  </Link>
                 </div>
-                {/* Flecha con animación de rotación */}
-                <ChevronDown
-                  className={`w-4 h-4 text-secondary/70 transition-transform duration-200 ${isReportesOpen ? "rotate-180" : ""}`}
-                />
-              </button>
-
-              {/* 🌟 3. SUBMENÚ DESPLEGABLE CON ANIMACIÓN DE ALTURA */}
-              <div
-                className={`overflow-hidden transition-all duration-300 flex flex-col pl-9 mt-1 space-y-1 ${isReportesOpen ? "max-h-32 opacity-100" : "max-h-0 opacity-0 pointer-events-none"}`}
-              >
-                {/* Subopción A: Calendario de Reservas */}
-                <Link
-                  to="/reporteador/calendario"
-                  onClick={() => setMenuAbierto(false)}
-                  className={`px-3 py-2 text-xs rounded-lg transition-colors font-medium ${
-                    isCalendarioActive
-                      ? "text-secondary font-bold bg-white/5"
-                      : "text-white/60 hover:text-white hover:bg-white/5"
-                  }`}
-                >
-                  • Calendario de reservas
-                </Link>
-
-                {/* Subopción B: Listado de Reservas */}
-                <Link
-                  to="/reporteador/listado"
-                  onClick={() => setMenuAbierto(false)}
-                  className={`px-3 py-2 text-xs rounded-lg transition-colors font-medium ${
-                    isListadoActive
-                      ? "text-secondary font-bold bg-white/5"
-                      : "text-white/60 hover:text-white hover:bg-white/5"
-                  }`}
-                >
-                  • Listado de reservas
-                </Link>
-                <Link
-                  to="/reporteador/bitacora"
-                  onClick={() => setMenuAbierto(false)}
-                  className={`px-3 py-2 text-xs rounded-lg transition-colors font-medium ${
-                    isBitacoraActive
-                      ? "text-secondary font-bold bg-white/5"
-                      : "text-white/60 hover:text-white hover:bg-white/5"
-                  }`}
-                >
-                  • Bitácora de auditoría
-                </Link>
               </div>
-            </div>
+            )}
           </nav>
         </div>
 

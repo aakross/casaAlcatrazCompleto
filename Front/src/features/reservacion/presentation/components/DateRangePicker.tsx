@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { Calendar as CalendarIcon, X } from "lucide-react";
 import { DayPicker, type DateRange } from "react-day-picker";
-import { format, differenceInDays } from "date-fns";
+import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import "react-day-picker/dist/style.css";
 import { useCalendarioOcupacion } from "../hooks/useCalendarioOcupacion";
+import { notify } from "../../../../core/components/notifierTostify";
 
 interface DateRangePickerProps {
   onRangeChange?: (range: DateRange | undefined) => void;
@@ -19,12 +20,14 @@ export function DateRangePicker({
   esEdicion = false,
   reservaIdEdicion = null,
 }: DateRangePickerProps) {
+  // 1. Cargamos los datos de ocupación desde la arquitectura limpia
   const {
-    diasOcupadosCompletos,
-    diasCambio,
+    loading,
+    checkoutsDelHotel,
     diasCheckIn,
     diasCheckOut,
-    loading,
+    diasCambio,
+    diasOcupadosCompletos,
   } = useCalendarioOcupacion(reservaIdEdicion);
 
   const [range, setRange] = useState<DateRange | undefined>(initialRange);
@@ -56,92 +59,49 @@ export function DateRangePicker({
   const hoy = useMemo(() => {
     const h = new Date();
     h.setHours(0, 0, 0, 0);
-    return normalizarFecha(h);
+    return h;
   }, []);
 
-  const setOcupados = useMemo(
-    () => new Set(diasOcupadosCompletos.map(normalizarFecha)),
-    [diasOcupadosCompletos],
-  );
-  const setCambio = useMemo(
-    () => new Set(diasCambio.map(normalizarFecha)),
-    [diasCambio],
-  );
-  const setCheckIn = useMemo(
-    () => new Set(diasCheckIn.map(normalizarFecha)),
-    [diasCheckIn],
-  );
-  const setCheckOut = useMemo(
-    () => new Set(diasCheckOut.map(normalizarFecha)),
-    [diasCheckOut],
-  );
+  const setCheckIns = useMemo(() => {
+    return new Set((diasCheckIn || []).map(normalizarFecha));
+  }, [diasCheckIn]);
 
-  const isDayDisabled = (date: Date): boolean => {
-    if (esEdicion) return false;
-    const t = normalizarFecha(date);
+  const setCheckOuts = useMemo(() => {
+    return new Set((diasCheckOut || []).map(normalizarFecha));
+  }, [diasCheckOut]);
 
-    // 1. Bloquear fechas en el pasado
-    if (t < hoy) return true;
+  const setCambio = useMemo(() => {
+    return new Set((diasCambio || []).map(normalizarFecha));
+  }, [diasCambio]);
 
-    // 2. Bloquear fechas 100% ocupadas o de cambio total
-    if (setOcupados.has(t) || setCambio.has(t)) return true;
+  const setOcupados = useMemo(() => {
+    return new Set((diasOcupadosCompletos || []).map(normalizarFecha));
+  }, [diasOcupadosCompletos]);
 
-    // Caso A: Se va a seleccionar la fecha de Check-In (Entrada)
-    if (!range?.from || (range.from && range.to)) {
-      // No se puede entrar si ya hay otro Check-In a las 15:00
-      if (setCheckIn.has(t)) return true;
-      // Días libres o de Check-Out (salida 12:00, p. ej. día 27) SÍ se permiten
-      return false;
-    }
+  // Días que están 100% bloqueados para cualquier nueva reserva:
+  // 1. Días intermedios ocupados (la casa está ocupada día y noche)
+  // 2. Días de cambio completo (alguien sale a las 12:00 PM Y alguien entra a las 3:00 PM)
+  // 3. Fechas en el pasado
+  // NOTA: Los días de sólo Check-Out (ej. 27) y de sólo Check-In (ej. 4) NO se bloquean
+  // para permitir entrar a las 3:00 PM o salir a las 12:00 PM respectivamente.
+  const diasBloqueadosCompletos = useMemo(() => {
+    return [...(diasOcupadosCompletos || []), ...(diasCambio || [])];
+  }, [diasOcupadosCompletos, diasCambio]);
 
-    // Caso B: Ya se seleccionó Check-In, se va a seleccionar Check-Out (Salida)
-    const tFrom = normalizarFecha(range.from);
+  const diasDeshabilitados = esEdicion
+    ? []
+    : [...diasBloqueadosCompletos, { before: hoy }];
 
-    // Check-Out debe ser posterior al Check-In (mínimo 1 noche)
-    if (t <= tFrom) return true;
-
-    // No se puede salir en un día donde otro huésped ya sale a las 12:00
-    if (setCheckOut.has(t)) return true;
-
-    // Buscar la fecha del siguiente bloqueo a partir de range.from
-    let proximoBloqueo = Infinity;
-    for (const d of diasCheckIn) {
-      const td = normalizarFecha(d);
-      if (td > tFrom && td < proximoBloqueo) proximoBloqueo = td;
-    }
-    for (const d of diasOcupadosCompletos) {
-      const td = normalizarFecha(d);
-      if (td > tFrom && td < proximoBloqueo) proximoBloqueo = td;
-    }
-    for (const d of diasCambio) {
-      const td = normalizarFecha(d);
-      if (td > tFrom && td < proximoBloqueo) proximoBloqueo = td;
-    }
-
-    // Si hay un bloqueo próximo, se puede salir ese día si es Check-In (a las 12:00),
-    // pero NO después de ese día
-    if (t > proximoBloqueo) return true;
-
-    return false;
-  };
-
-  const handleSelect = (
-    newRange: DateRange | undefined,
-    triggerDate?: Date,
-  ) => {
-    if (!newRange) {
-      setRange(undefined);
-      onRangeChange?.(undefined);
-      return;
-    }
-
-    // Si hace clic en la misma fecha de entrada (cuando aún no hay salida): deseleccionar
+  const handleSelect = (newRange: DateRange | undefined) => {
+    // Si el usuario intenta seleccionar como fecha de ENTRADA (primer clic) un día donde ya hay llegada
     if (
-      range?.from &&
-      !range?.to &&
-      triggerDate &&
-      normalizarFecha(triggerDate) === normalizarFecha(range.from)
+      newRange?.from &&
+      !newRange.to &&
+      setCheckIns.has(normalizarFecha(newRange.from))
     ) {
+      notify.warning(
+        "En esta fecha ya hay una llegada programada (3:00 PM). Solo está disponible como fecha de salida (Check-Out)."
+      );
       setRange(undefined);
       onRangeChange?.(undefined);
       return;
@@ -150,13 +110,13 @@ export function DateRangePicker({
     setRange(newRange);
     onRangeChange?.(newRange);
 
-    // Si se completó el rango (from y to distintos), cerrar el desplegable
+    // Si se completó el rango de entrada y salida (y no es el mismo día), cerramos el calendario
     if (
-      newRange.from &&
-      newRange.to &&
+      newRange?.from &&
+      newRange?.to &&
       normalizarFecha(newRange.from) !== normalizarFecha(newRange.to)
     ) {
-      setTimeout(() => setIsOpen(false), 250);
+      setTimeout(() => setIsOpen(false), 200);
     }
   };
 
@@ -174,7 +134,7 @@ export function DateRangePicker({
     if (range.to) {
       displayText = `${format(range.from, "dd MMM", { locale: es })} - ${format(range.to, "dd MMM yyyy", { locale: es })}`;
     } else {
-      displayText = `Entrada: ${format(range.from, "dd MMM yyyy", { locale: es })} (Seleccione salida)`;
+      displayText = `${format(range.from, "dd MMM yyyy", { locale: es })} (Seleccione salida)`;
     }
   }
 
@@ -209,54 +169,19 @@ export function DateRangePicker({
 
       {isOpen && (
         <div className="absolute z-50 mt-2 p-4 bg-surfacecontainer border border-tertiary shadow-2xl rounded-xl left-0 md:left-auto">
-          {/* Header informativo del rango */}
-          <div className="mb-3 pb-2 border-b border-tertiary/20">
-            {!range?.from ? (
-              <p className="text-xs text-primary font-medium">
-                Paso 1: Seleccione la fecha de <strong>Check-In (Entrada)</strong>
-              </p>
-            ) : !range.to ? (
-              <div className="flex items-center justify-between text-xs text-secondary font-body bg-secondary/10 px-2 py-1 rounded-md">
-                <span>
-                  Entrada: <strong>{format(range.from, "dd MMM yyyy", { locale: es })}</strong>. Seleccione <strong>Check-Out</strong>
-                </span>
-                <button
-                  type="button"
-                  onClick={handleClear}
-                  className="text-xs underline text-primary font-bold hover:opacity-80 cursor-pointer ml-2"
-                >
-                  Cambiar
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center justify-between text-xs text-primary font-body bg-primary/10 px-2 py-1 rounded-md">
-                <span>
-                  {format(range.from, "dd MMM", { locale: es })} al{" "}
-                  {format(range.to, "dd MMM yyyy", { locale: es })} (
-                  {differenceInDays(range.to, range.from)} noches)
-                </span>
-                <button
-                  type="button"
-                  onClick={handleClear}
-                  className="text-xs text-red-500 hover:underline cursor-pointer ml-2"
-                >
-                  Limpiar
-                </button>
-              </div>
-            )}
-          </div>
-
           <DayPicker
             mode="range"
+            min={1}
             selected={range}
             onSelect={handleSelect}
             locale={es}
-            disabled={isDayDisabled}
+            disabled={diasDeshabilitados}
             excludeDisabled={true}
             resetOnSelect={true}
             modifiers={{
-              salida: diasCheckOut,
-              entrada: diasCheckIn,
+              ocupado: diasBloqueadosCompletos,
+              salida: diasCheckOut || checkoutsDelHotel || [],
+              entrada: diasCheckIn || [],
             }}
             modifiersClassNames={{
               selected:
@@ -275,22 +200,27 @@ export function DateRangePicker({
             components={{
               DayButton: ({ day, ...props }) => {
                 const t = normalizarFecha(day.date);
-                let title = "";
-                if (setCheckOut.has(t)) {
-                  title =
-                    "Salida de huésped (12:00 PM). Disponible para nuevo Check-In (3:00 PM)";
-                } else if (setCheckIn.has(t)) {
-                  title =
-                    "Llegada de huésped (3:00 PM). Disponible para Check-Out (12:00 PM)";
-                } else if (setOcupados.has(t) || setCambio.has(t)) {
-                  title = "Fecha ocupada (No disponible)";
+                const esSalida = setCheckOuts.has(t);
+                const esEntrada = setCheckIns.has(t);
+                const esCambio = setCambio.has(t);
+                const esOcupado = setOcupados.has(t);
+
+                let title = props.title;
+                if (esCambio) {
+                  title = "Día ocupado (Salida 12:00 PM y Llegada 3:00 PM - No disponible)";
+                } else if (esOcupado) {
+                  title = "Día ocupado (No disponible)";
+                } else if (esSalida) {
+                  title = "Salida previa (12:00 PM) - Disponible para Check-In (3:00 PM)";
+                } else if (esEntrada) {
+                  title = "Llegada posterior (3:00 PM) - Disponible para Check-Out (12:00 PM)";
                 }
 
                 return (
                   <button
                     {...props}
                     type="button"
-                    title={title || props.title}
+                    title={title}
                     className={`${props.className || ""} font-label transition-all duration-150`}
                   />
                 );
@@ -302,11 +232,11 @@ export function DateRangePicker({
           <div className="flex flex-col gap-1 mt-3 pt-2 border-t border-tertiary/20 text-[11px] font-body text-neutral/70">
             <div className="flex items-center gap-2">
               <span className="w-3.5 h-1 border-b-2 border-dashed border-ohsunny inline-block shrink-0" />
-              <span>Salida previa (Disponible para Check-In a las 3:00 PM)</span>
+              <span>Borde inferior: Salida previa (Disponible para Check-In a las 3:00 PM)</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="w-3.5 h-1 border-t-2 border-dashed border-ohsunny inline-block shrink-0" />
-              <span>Llegada posterior (Disponible para Check-Out a las 12:00 PM)</span>
+              <span>Borde superior: Llegada posterior (Disponible para Check-Out a las 12:00 PM)</span>
             </div>
           </div>
         </div>

@@ -11,4 +11,5 @@ export interface LoginResponse {
   isActive: boolean;
   token: string;
   borrar: number | boolean;
+  permisos: string[];
 }

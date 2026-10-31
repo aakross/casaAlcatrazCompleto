@@ -22,6 +22,7 @@ export const useAuth = () => {
         response.roleId,
         response.id,
         response.borrar === true || response.borrar === 1,
+        response.permisos || [],
       );
       navigate("/");
       notify.success("¡Bienvenido!");

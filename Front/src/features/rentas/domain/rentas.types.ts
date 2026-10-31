@@ -27,6 +27,7 @@ export interface LocalComercial {
   ocupado?: boolean;
   contrato_vigente_id?: number | null;
   arrendatario_actual?: string | null;
+  nombre_comercial_actual?: string | null;
 }
 
 export interface ContratoRenta {
@@ -35,6 +36,9 @@ export interface ContratoRenta {
   local_numero?: string;
   local_nickname?: string;
   lugar_nombre?: string;
+  region_id?: number;
+  region_nombre?: string;
+  nombre_comercial?: string | null;
   arrendatario_nombre: string;
   arrendatario_telefono?: string | null;
   arrendatario_email?: string | null;
@@ -53,6 +57,7 @@ export interface PagoRenta {
   arrendatario_nombre?: string;
   monto: number;
   meses_cubiertos: number;
+  periodo_cubierto?: string | null;
   fecha_abono_real: string;
   fecha_captura: string;
   metodo_pago: string;
@@ -85,6 +90,7 @@ export interface AdeudoResumen {
   lugar: string;
   numero_fisico: string;
   nickname: string;
+  nombre_comercial?: string | null;
   arrendatario_nombre: string;
   fecha_inicio: string;
   dia_corte: number;
@@ -95,6 +101,8 @@ export interface AdeudoResumen {
   meses_adeudo: number;
   monto_adeudo: number;
   estatus_cartera: "AL CORRIENTE" | "CON ADEUDO";
+  periodos_pendientes?: string[];
+  periodos_pendientes_texto?: string;
 }
 
 export interface DashboardRentas {

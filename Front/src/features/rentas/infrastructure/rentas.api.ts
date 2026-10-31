@@ -22,6 +22,10 @@ export const rentasApi = {
     return data.data;
   },
 
+  async updateRegion(id: number, body: { nombre: string; descripcion?: string }): Promise<void> {
+    await apiClient.put(`/rentas/regiones/${id}`, body);
+  },
+
   // Lugares
   async getLugares(regionId?: number): Promise<Lugar[]> {
     const params = regionId ? { regionId } : {};
@@ -32,6 +36,10 @@ export const rentasApi = {
   async createLugar(body: { region_id: number; nombre: string; direccion?: string }): Promise<Lugar> {
     const { data } = await apiClient.post<{ ok: boolean; data: Lugar }>("/rentas/lugares", body);
     return data.data;
+  },
+
+  async updateLugar(id: number, body: { region_id: number; nombre: string; direccion?: string }): Promise<void> {
+    await apiClient.put(`/rentas/lugares/${id}`, body);
   },
 
   // Locales
@@ -75,6 +83,7 @@ export const rentasApi = {
 
   async createContrato(body: {
     local_id: number;
+    nombre_comercial?: string;
     arrendatario_nombre: string;
     arrendatario_telefono?: string;
     arrendatario_email?: string;
@@ -88,9 +97,11 @@ export const rentasApi = {
   },
 
   async updateContrato(id: number, body: {
+    nombre_comercial?: string;
     arrendatario_nombre: string;
     arrendatario_telefono?: string;
     arrendatario_email?: string;
+    fecha_inicio?: string;
     fecha_fin?: string;
     monto_renta_mensual: number;
     dia_corte: number;
@@ -114,6 +125,7 @@ export const rentasApi = {
     contrato_id: number;
     monto: number;
     meses_cubiertos: number;
+    periodo_cubierto?: string;
     fecha_abono_real: string;
     metodo_pago: string;
     referencia_bancaria?: string;
@@ -126,6 +138,7 @@ export const rentasApi = {
   async updatePago(id: number, body: {
     monto: number;
     meses_cubiertos: number;
+    periodo_cubierto?: string;
     fecha_abono_real: string;
     metodo_pago: string;
     referencia_bancaria?: string;

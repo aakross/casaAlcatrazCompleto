@@ -6,6 +6,8 @@ import {
   ClockFadingIcon,
   Users,
   Phone,
+  Search,
+  X,
 } from "lucide-react";
 import { DateRangePicker } from "../components/DateRangePicker";
 import { useReservasForm } from "../hooks/useReservasForm";
@@ -13,7 +15,7 @@ import { UltimasCapturas } from "./UltimasCapturas";
 import { useUltimasCapturas } from "../hooks/useUltimasCapturas";
 import { useEditarReserva } from "../hooks/useEditarReserva";
 import { EditarReservaModal } from "../components/EditarReservaModal";
-import { useEffect } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { ConfirmarEliminarModal } from "../components/ConfirmarEliminarModal";
 import { useAuthStore } from "../../../../core/store/authStore";
 
@@ -22,6 +24,23 @@ export const ReservasPage = () => {
     useUltimasCapturas();
   const modalEdicion = useEditarReserva(refrescarCapturas);
   const puedeBorrar = useAuthStore((state) => state.puedeBorrar) ?? false;
+  const [busquedaCapturas, setBusquedaCapturas] = useState("");
+
+  const reservasFiltradas = useMemo(() => {
+    if (!busquedaCapturas.trim()) return reservas;
+    const term = busquedaCapturas.toLowerCase().trim();
+    return reservas.filter((r) => {
+      const nombreCompleto = `${r.nombreCliente} ${r.apellidoCliente}`.toLowerCase();
+      const origen = (r.origenNombre || "").toLowerCase();
+      const idStr = `#${r.id}`.toLowerCase();
+      return (
+        nombreCompleto.includes(term) ||
+        origen.includes(term) ||
+        idStr.includes(term) ||
+        String(r.id).includes(term)
+      );
+    });
+  }, [reservas, busquedaCapturas]);
   const {
     register,
     handleSubmit,
@@ -731,38 +750,82 @@ export const ReservasPage = () => {
 
       <div>
         {/* Sección de Últimas Capturas */}
-        <div className="w-full  px-3 ">
-          <div className="flex items-center gap-2 p-3">
-            <ClockFadingIcon color="#1a3c34" className="w-5 h-5" />
-            <span className="font-body text-surface font-semibold">
-              Últimas Capturas
+        <div className="w-full px-3">
+          <div className="flex items-center justify-between p-3 border-b border-black/5 mb-2">
+            <div className="flex items-center gap-2">
+              <ClockFadingIcon color="#1a3c34" className="w-5 h-5" />
+              <span className="font-body text-surface font-semibold">
+                Últimas Capturas
+              </span>
+            </div>
+            <span className="text-[11px] font-bold text-neutral/50 bg-surfacecontainer/60 px-2 py-0.5 rounded-full border border-black/5">
+              {reservasFiltradas.length} de {reservas.length}
             </span>
           </div>
 
-          {/* ✅ CORRECCIÓN: El estado de carga solo afecta a esta sección, no a toda la página */}
+          {/* Barra de Búsqueda Rápida */}
+          <div className="px-1 mb-3">
+            <div className="relative">
+              <Search className="w-4 h-4 absolute left-3 top-2.5 text-neutral/40" />
+              <input
+                type="text"
+                placeholder="Buscar por cliente, plataforma o folio..."
+                value={busquedaCapturas}
+                onChange={(e) => setBusquedaCapturas(e.target.value)}
+                className="w-full pl-9 pr-8 py-2 text-xs bg-white border border-black/10 rounded-xl focus:outline-none focus:border-primary shadow-2xs font-medium text-neutral"
+              />
+              {busquedaCapturas && (
+                <button
+                  type="button"
+                  onClick={() => setBusquedaCapturas("")}
+                  className="absolute right-2.5 top-2.5 text-neutral/40 hover:text-neutral cursor-pointer"
+                  title="Limpiar búsqueda"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Contenedor Fijo con Altura Máxima y Scroll Interno */}
           {isLoading ? (
-            <div className="text-sm text-gray-400 font-medium italic p-2">
+            <div className="text-sm text-gray-400 font-medium italic p-4 text-center">
               Cargando capturas...
             </div>
           ) : reservas.length === 0 ? (
-            <p className="text-xs text-gray-400 italic p-2">
+            <p className="text-xs text-gray-400 italic p-4 text-center">
               No hay reservaciones registradas en el sistema.
             </p>
+          ) : reservasFiltradas.length === 0 ? (
+            <div className="p-6 text-center bg-white rounded-xl border border-black/5 shadow-2xs mx-1 space-y-2">
+              <p className="text-xs text-neutral/60 font-medium">
+                No se encontraron reservaciones que coincidan con "{busquedaCapturas}".
+              </p>
+              <button
+                type="button"
+                onClick={() => setBusquedaCapturas("")}
+                className="text-[11px] text-primary font-bold underline cursor-pointer hover:text-primary/80"
+              >
+                Limpiar filtro
+              </button>
+            </div>
           ) : (
-            reservas.map((reserva) => (
-              <UltimasCapturas
-                key={reserva.id}
-                id={reserva.id}
-                nombreCliente={`${reserva.nombreCliente} ${reserva.apellidoCliente}`}
-                plataforma={reserva.origenNombre.trim()}
-                noches={reserva.totalDiasReservacion}
-                precio={reserva.montoTotal}
-                onEdit={() => modalEdicion.abrirEditarModal(reserva)}
-                onDelete={() => deleteModal.abrir(reserva.id)}
-                precioxNoche={reserva.precioNoche}
-                permitirEliminar={puedeBorrar}
-              />
-            ))
+            <div className="max-h-[600px] overflow-y-auto pr-1 space-y-1">
+              {reservasFiltradas.map((reserva) => (
+                <UltimasCapturas
+                  key={reserva.id}
+                  id={reserva.id}
+                  nombreCliente={`${reserva.nombreCliente} ${reserva.apellidoCliente}`}
+                  plataforma={reserva.origenNombre.trim()}
+                  noches={reserva.totalDiasReservacion}
+                  precio={reserva.montoTotal}
+                  onEdit={() => modalEdicion.abrirEditarModal(reserva)}
+                  onDelete={() => deleteModal.abrir(reserva.id)}
+                  precioxNoche={reserva.precioNoche}
+                  permitirEliminar={puedeBorrar}
+                />
+              ))}
+            </div>
           )}
         </div>
         <ConfirmarEliminarModal

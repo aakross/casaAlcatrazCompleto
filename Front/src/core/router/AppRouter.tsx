@@ -15,20 +15,29 @@ import { ListadoReservasReportePage } from "../../features/reportes/presentation
 import { BitacoraBorradosPage } from "../../features/reporteador/presentation/pages/BitacoraBorradosPage";
 import { EstadoResultadosPage } from "../../features/estado-resultados/presentation/pages/EstadoResultadosPage";
 import { RentasPage } from "../../features/rentas/presentation/pages/RentasPage";
+import { GestionPermisosPage } from "../../features/permisos/presentation/pages/GestionPermisosPage";
 
 interface ProtectedRouteProps {
-  allowedRoles?: number[]; // Lista de roles numéricos válidos
+  allowedRoles?: number[]; // Mantenido por retrocompatibilidad
+  requiredPermission?: string; // Validación dinámica de módulos
 }
 
-function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
+function ProtectedRoute({ allowedRoles, requiredPermission }: ProtectedRouteProps) {
   const token = useAuthStore((state) => state.token);
   const roleId = useAuthStore((state) => state.roleId);
+  const hasPermission = useAuthStore((state) => state.hasPermission);
 
   if (!token) {
     return <Navigate to="/login" replace />;
   }
 
-  if (allowedRoles && (roleId === null || !allowedRoles.includes(roleId))) {
+  // Verificación dinámica por clave de permiso
+  if (requiredPermission && !hasPermission(requiredPermission)) {
+    return <Navigate to="/no-autorizado" replace />;
+  }
+
+  // Verificación por rol numérico (retrocompatible)
+  if (allowedRoles && (roleId === null || (!allowedRoles.includes(roleId) && roleId !== 1))) {
     return <Navigate to="/no-autorizado" replace />;
   }
 
@@ -60,7 +69,6 @@ const router = createBrowserRouter(
       element: <ProtectedRoute />,
       children: [
         {
-          // 2. ENVOLVEMOS LAS SECCIONES DENTRO DEL LAYOUT DEL SIDEBAR
           element: <AdminLayout />,
           children: [
             {
@@ -72,7 +80,7 @@ const router = createBrowserRouter(
               ),
             },
             {
-              element: <ProtectedRoute allowedRoles={[1, 3]} />,
+              element: <ProtectedRoute requiredPermission="PAGOS" />,
               children: [
                 {
                   path: "/pagos",
@@ -89,7 +97,7 @@ const router = createBrowserRouter(
               ),
             },
             {
-              element: <ProtectedRoute allowedRoles={[1, 2]} />,
+              element: <ProtectedRoute requiredPermission="RESERVAS" />,
               children: [
                 {
                   path: "/reservas",
@@ -98,7 +106,7 @@ const router = createBrowserRouter(
               ],
             },
             {
-              element: <ProtectedRoute allowedRoles={[1, 3]} />,
+              element: <ProtectedRoute requiredPermission="CORTES" />,
               children: [
                 {
                   path: "/cortes",
@@ -107,7 +115,7 @@ const router = createBrowserRouter(
               ],
             },
             {
-              element: <ProtectedRoute allowedRoles={[1, 3]} />,
+              element: <ProtectedRoute requiredPermission="ESTADO_RESULTADOS" />,
               children: [
                 {
                   path: "/estado-resultados",
@@ -118,7 +126,7 @@ const router = createBrowserRouter(
             ...(import.meta.env.VITE_ENABLE_RENTAS === "true"
               ? [
                   {
-                    element: <ProtectedRoute allowedRoles={[1, 2, 3]} />,
+                    element: <ProtectedRoute requiredPermission="RENTAS" />,
                     children: [
                       {
                         path: "/rentas",
@@ -133,11 +141,10 @@ const router = createBrowserRouter(
                 ]
               : []),
             {
-              element: <ProtectedRoute allowedRoles={[1, 3]} />,
+              element: <ProtectedRoute requiredPermission="REPORTES" />,
               children: [
                 {
                   path: "/reporteador",
-
                   children: [
                     {
                       path: "calendario",
@@ -155,6 +162,15 @@ const router = createBrowserRouter(
                 },
               ],
             },
+            {
+              element: <ProtectedRoute requiredPermission="PERMISOS" />,
+              children: [
+                {
+                  path: "/permisos",
+                  element: <GestionPermisosPage />,
+                },
+              ],
+            },
           ],
         },
       ],
@@ -162,8 +178,11 @@ const router = createBrowserRouter(
     {
       path: "/no-autorizado",
       element: (
-        <div className="p-6 font-body text-red-500 text-center font-bold text-xl">
-          No tienes permisos para acceder a esta sección.
+        <div className="p-8 font-body text-center space-y-3">
+          <div className="text-rose-600 font-extrabold text-2xl font-headline">Acceso Restringido</div>
+          <p className="text-neutral/70 text-sm max-w-md mx-auto">
+            No tienes los permisos asignados para visualizar este módulo. Contacta a un administrador para solicitar acceso.
+          </p>
         </div>
       ),
     },
