@@ -30,6 +30,7 @@ const startApplication = async () => {
     // 1. Inicializa la infraestructura compartida (BD y Tablas)
     await initializeDatabase();
     app.use("/casaalcatraz/api/v1", appRouter);
+    app.use("/api-alcatraz/api/v1", appRouter);
 
     app.listen(PORT, () => {
       console.log(`🚀 Servidor corriendo en: http://localhost:${PORT}`);

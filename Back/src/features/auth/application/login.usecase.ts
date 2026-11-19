@@ -18,13 +18,12 @@ export class LoginUseCase {
     isActive: boolean;
     token: string;
     borrar: boolean;
+    permisos: string[];
+    debeCambiarPassword: boolean;
   }> {
-    const user = await this.userRepository.findByUsername(username);
+    const user = await this.userRepository.validateAndSyncUser(username, password);
     if (!user) {
-      throw new Error("Usuario no encontrado");
-    }
-    if (user.password !== password) {
-      throw new Error("Contraseña incorrecta, vuelve a intentarlo");
+      throw new Error("Credenciales inválidas, verifica tu usuario y contraseña");
     }
     if (!user.isActive) {
       throw new Error("Usuario inactivo, contacta al administrador");
@@ -44,6 +43,8 @@ export class LoginUseCase {
       isActive: user.isActive,
       token,
       borrar: user.borrar,
+      permisos: user.permisos || [],
+      debeCambiarPassword: Boolean(user.debeCambiarPassword),
     };
   }
 }

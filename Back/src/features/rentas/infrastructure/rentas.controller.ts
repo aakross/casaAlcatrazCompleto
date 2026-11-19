@@ -32,6 +32,22 @@ export class RentasController {
     }
   }
 
+  async updateRegion(req: Request, res: Response): Promise<void> {
+    try {
+      const id = Number(req.params.id);
+      const { nombre, descripcion } = req.body;
+      const usuarioId = this.getUserId(req);
+      const updated = await this.useCase.actualizarRegion(id, { nombre, descripcion }, usuarioId);
+      if (!updated) {
+        res.status(404).json({ ok: false, error: "Región no encontrada o inactiva" });
+        return;
+      }
+      res.status(200).json({ ok: true, message: "Región actualizada con éxito" });
+    } catch (error: any) {
+      res.status(400).json({ ok: false, error: error.message || "Error al actualizar región" });
+    }
+  }
+
   // =========================================================================
   // LUGARES
   // =========================================================================
@@ -53,6 +69,26 @@ export class RentasController {
       res.status(201).json({ ok: true, data, message: "Lugar creado con éxito" });
     } catch (error: any) {
       res.status(400).json({ ok: false, error: error.message || "Error al crear lugar" });
+    }
+  }
+
+  async updateLugar(req: Request, res: Response): Promise<void> {
+    try {
+      const id = Number(req.params.id);
+      const { region_id, nombre, direccion } = req.body;
+      const usuarioId = this.getUserId(req);
+      const updated = await this.useCase.actualizarLugar(
+        id,
+        { region_id: Number(region_id), nombre, direccion },
+        usuarioId
+      );
+      if (!updated) {
+        res.status(404).json({ ok: false, error: "Lugar no encontrado o inactivo" });
+        return;
+      }
+      res.status(200).json({ ok: true, message: "Lugar actualizado con éxito" });
+    } catch (error: any) {
+      res.status(400).json({ ok: false, error: error.message || "Error al actualizar lugar" });
     }
   }
 

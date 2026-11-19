@@ -14,10 +14,12 @@ const controller = new RentasController(useCase);
 // Rutas de Regiones
 rentasRouter.get("/regiones", (req, res) => controller.getRegiones(req, res));
 rentasRouter.post("/regiones", authMiddleware, (req, res) => controller.createRegion(req, res));
+rentasRouter.put("/regiones/:id", authMiddleware, (req, res) => controller.updateRegion(req, res));
 
 // Rutas de Lugares
 rentasRouter.get("/lugares", (req, res) => controller.getLugares(req, res));
 rentasRouter.post("/lugares", authMiddleware, (req, res) => controller.createLugar(req, res));
+rentasRouter.put("/lugares/:id", authMiddleware, (req, res) => controller.updateLugar(req, res));
 
 // Rutas de Locales
 rentasRouter.get("/locales", (req, res) => controller.getLocales(req, res));

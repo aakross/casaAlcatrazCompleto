@@ -69,6 +69,7 @@ BEGIN
     CREATE TABLE dbo.rentas_contratos (
         id INT IDENTITY(1,1) NOT NULL,
         local_id INT NOT NULL,
+        nombre_comercial VARCHAR(150) NULL,
         arrendatario_nombre VARCHAR(150) NOT NULL,
         arrendatario_telefono VARCHAR(30) NULL,
         arrendatario_email VARCHAR(100) NULL,
@@ -86,6 +87,13 @@ BEGIN
         CONSTRAINT FK_rentas_contratos_local FOREIGN KEY (local_id) REFERENCES dbo.rentas_locales(id)
     );
 END;
+ELSE
+BEGIN
+    IF COL_LENGTH('dbo.rentas_contratos', 'nombre_comercial') IS NULL
+    BEGIN
+        ALTER TABLE dbo.rentas_contratos ADD nombre_comercial VARCHAR(150) NULL;
+    END;
+END;
 
 -- 5. TABLA: PAGOS DE RENTA
 IF OBJECT_ID('dbo.rentas_pagos', 'U') IS NULL
@@ -95,6 +103,7 @@ BEGIN
         contrato_id INT NOT NULL,
         monto DECIMAL(12, 2) NOT NULL,
         meses_cubiertos DECIMAL(5, 2) NOT NULL DEFAULT 1.00,
+        periodo_cubierto VARCHAR(150) NULL,
         fecha_abono_real DATE NOT NULL,
         fecha_captura DATETIME NOT NULL DEFAULT GETDATE(),
         metodo_pago VARCHAR(50) NOT NULL DEFAULT 'Efectivo',
@@ -109,6 +118,14 @@ BEGIN
         CONSTRAINT FK_rentas_pagos_contrato FOREIGN KEY (contrato_id) REFERENCES dbo.rentas_contratos(id)
     );
 END;
+ELSE
+BEGIN
+    IF COL_LENGTH('dbo.rentas_pagos', 'periodo_cubierto') IS NULL
+    BEGIN
+        ALTER TABLE dbo.rentas_pagos ADD periodo_cubierto VARCHAR(150) NULL;
+    END;
+END;
+GO
 
 -- 6. TABLA: LOG DE AUDITORÍA DE PAGOS (Antifraude e Historial de Modificaciones)
 IF OBJECT_ID('dbo.rentas_log_auditoria_pagos', 'U') IS NULL

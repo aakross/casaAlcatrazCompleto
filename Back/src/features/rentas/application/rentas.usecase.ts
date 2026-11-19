@@ -25,6 +25,22 @@ export class RentasUseCase {
     return this.repository.crearRegion(nombre.trim(), descripcion?.trim() || null, usuarioId);
   }
 
+  async actualizarRegion(
+    id: number,
+    data: { nombre: string; descripcion?: string | null },
+    usuarioId: number
+  ): Promise<boolean> {
+    if (!id || id <= 0) throw new Error("ID de región inválido.");
+    if (!data.nombre || !data.nombre.trim()) {
+      throw new Error("El nombre de la región es obligatorio.");
+    }
+    return this.repository.actualizarRegion(
+      id,
+      { nombre: data.nombre.trim(), descripcion: data.descripcion?.trim() || null },
+      usuarioId
+    );
+  }
+
   // Lugares
   async listarLugares(regionId?: number): Promise<Lugar[]> {
     return this.repository.obtenerLugares(regionId);
@@ -43,6 +59,29 @@ export class RentasUseCase {
       throw new Error("El nombre del lugar/complejo es obligatorio.");
     }
     return this.repository.crearLugar(regionId, nombre.trim(), direccion?.trim() || null, usuarioId);
+  }
+
+  async actualizarLugar(
+    id: number,
+    data: { region_id: number; nombre: string; direccion?: string | null },
+    usuarioId: number
+  ): Promise<boolean> {
+    if (!id || id <= 0) throw new Error("ID de lugar inválido.");
+    if (!data.region_id || data.region_id <= 0) {
+      throw new Error("Debe seleccionar una región válida.");
+    }
+    if (!data.nombre || !data.nombre.trim()) {
+      throw new Error("El nombre del lugar/complejo es obligatorio.");
+    }
+    return this.repository.actualizarLugar(
+      id,
+      {
+        region_id: data.region_id,
+        nombre: data.nombre.trim(),
+        direccion: data.direccion?.trim() || null,
+      },
+      usuarioId
+    );
   }
 
   // Locales
@@ -100,6 +139,7 @@ export class RentasUseCase {
   async crearContrato(
     data: {
       local_id: number;
+      nombre_comercial?: string | null;
       arrendatario_nombre: string;
       arrendatario_telefono?: string | null;
       arrendatario_email?: string | null;
@@ -125,9 +165,11 @@ export class RentasUseCase {
   async actualizarContrato(
     id: number,
     data: {
+      nombre_comercial?: string | null;
       arrendatario_nombre: string;
       arrendatario_telefono?: string | null;
       arrendatario_email?: string | null;
+      fecha_inicio?: string | null;
       fecha_fin?: string | null;
       monto_renta_mensual: number;
       dia_corte: number;
@@ -136,7 +178,29 @@ export class RentasUseCase {
     usuarioId: number
   ): Promise<boolean> {
     if (!id || id <= 0) throw new Error("ID de contrato inválido.");
-    return this.repository.actualizarContrato(id, data, usuarioId);
+    if (!data.arrendatario_nombre || !data.arrendatario_nombre.trim()) {
+      throw new Error("El nombre del arrendatario es obligatorio.");
+    }
+    if (data.monto_renta_mensual === undefined || Number(data.monto_renta_mensual) < 0) {
+      throw new Error("El monto de la renta mensual debe ser un valor numérico válido.");
+    }
+    if (data.dia_corte < 1 || data.dia_corte > 31) {
+      data.dia_corte = 1;
+    }
+    return this.repository.actualizarContrato(
+      id,
+      {
+        ...data,
+        monto_renta_mensual: Number(data.monto_renta_mensual),
+        arrendatario_nombre: data.arrendatario_nombre.trim(),
+        nombre_comercial: data.nombre_comercial?.trim() || null,
+        arrendatario_telefono: data.arrendatario_telefono?.trim() || null,
+        arrendatario_email: data.arrendatario_email?.trim() || null,
+        fecha_inicio: data.fecha_inicio?.trim() || null,
+        fecha_fin: data.fecha_fin?.trim() || null,
+      },
+      usuarioId
+    );
   }
 
   async finalizarContrato(id: number, usuarioId: number): Promise<boolean> {
@@ -154,6 +218,7 @@ export class RentasUseCase {
       contrato_id: number;
       monto: number;
       meses_cubiertos: number;
+      periodo_cubierto?: string | null;
       fecha_abono_real: string;
       metodo_pago: string;
       referencia_bancaria?: string | null;
@@ -167,7 +232,13 @@ export class RentasUseCase {
     if (!data.meses_cubiertos || data.meses_cubiertos <= 0) {
       data.meses_cubiertos = 1.0;
     }
-    return this.repository.crearPago(data, usuarioId);
+    return this.repository.crearPago(
+      {
+        ...data,
+        periodo_cubierto: data.periodo_cubierto?.trim() || null,
+      },
+      usuarioId
+    );
   }
 
   async actualizarPagoConAuditoria(
@@ -175,6 +246,7 @@ export class RentasUseCase {
     data: {
       monto: number;
       meses_cubiertos: number;
+      periodo_cubierto?: string | null;
       fecha_abono_real: string;
       metodo_pago: string;
       referencia_bancaria?: string | null;
@@ -189,7 +261,14 @@ export class RentasUseCase {
     }
     if (!data.monto || data.monto <= 0) throw new Error("El monto debe ser mayor a 0.");
     if (!data.fecha_abono_real) throw new Error("La fecha de abono real es obligatoria.");
-    return this.repository.actualizarPagoConAuditoria(id, data, usuarioId);
+    return this.repository.actualizarPagoConAuditoria(
+      id,
+      {
+        ...data,
+        periodo_cubierto: data.periodo_cubierto?.trim() || null,
+      },
+      usuarioId
+    );
   }
 
   async eliminarPagoConAuditoria(

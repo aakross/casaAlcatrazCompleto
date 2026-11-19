@@ -6,6 +6,7 @@ import { resumenRouter } from "../../features/resumen/infrastructure/resumen.rou
 import reportesRouter from "../../features/reportes/infrastructure/reportes.routes";
 import { estadoResultadosRouter } from "../../features/estado-resultados/infrastructure/estado-resultados.routes";
 import { rentasRouter } from "../../features/rentas/infrastructure/rentas.routes";
+import { permisosRouter } from "../../features/permisos/infrastructure/permisos.routes";
 
 const appRouter = Router();
 
@@ -17,5 +18,6 @@ appRouter.use("/resumen", resumenRouter);
 appRouter.use("/reportes", reportesRouter);
 appRouter.use("/estado-resultados", estadoResultadosRouter);
 appRouter.use("/rentas", rentasRouter);
+appRouter.use("/permisos", permisosRouter);
 
 export { appRouter };

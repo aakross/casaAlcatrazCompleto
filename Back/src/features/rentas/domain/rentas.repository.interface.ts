@@ -13,10 +13,12 @@ export interface IRentasRepository {
   // Regiones
   obtenerRegiones(): Promise<Region[]>;
   crearRegion(nombre: string, descripcion: string | null, usuarioId: number): Promise<Region>;
+  actualizarRegion(id: number, data: { nombre: string; descripcion?: string | null }, usuarioId: number): Promise<boolean>;
 
   // Lugares
   obtenerLugares(regionId?: number): Promise<Lugar[]>;
   crearLugar(regionId: number, nombre: string, direccion: string | null, usuarioId: number): Promise<Lugar>;
+  actualizarLugar(id: number, data: { region_id: number; nombre: string; direccion?: string | null }, usuarioId: number): Promise<boolean>;
 
   // Locales
   obtenerLocales(lugarId?: number): Promise<LocalComercial[]>;
@@ -40,6 +42,7 @@ export interface IRentasRepository {
   obtenerContratos(localId?: number): Promise<ContratoRenta[]>;
   crearContrato(data: {
     local_id: number;
+    nombre_comercial?: string | null;
     arrendatario_nombre: string;
     arrendatario_telefono?: string | null;
     arrendatario_email?: string | null;
@@ -49,9 +52,11 @@ export interface IRentasRepository {
     dia_corte: number;
   }, usuarioId: number): Promise<ContratoRenta>;
   actualizarContrato(id: number, data: {
+    nombre_comercial?: string | null;
     arrendatario_nombre: string;
     arrendatario_telefono?: string | null;
     arrendatario_email?: string | null;
+    fecha_inicio?: string | null;
     fecha_fin?: string | null;
     monto_renta_mensual: number;
     dia_corte: number;
@@ -65,6 +70,7 @@ export interface IRentasRepository {
     contrato_id: number;
     monto: number;
     meses_cubiertos: number;
+    periodo_cubierto?: string | null;
     fecha_abono_real: string;
     metodo_pago: string;
     referencia_bancaria?: string | null;
@@ -73,6 +79,7 @@ export interface IRentasRepository {
   actualizarPagoConAuditoria(id: number, data: {
     monto: number;
     meses_cubiertos: number;
+    periodo_cubierto?: string | null;
     fecha_abono_real: string;
     metodo_pago: string;
     referencia_bancaria?: string | null;

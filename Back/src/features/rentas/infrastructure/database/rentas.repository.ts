@@ -12,6 +12,47 @@ import {
   DashboardRentas,
 } from "../../domain/rentas.types";
 
+const MESES_ES = [
+  "enero",
+  "febrero",
+  "marzo",
+  "abril",
+  "mayo",
+  "junio",
+  "julio",
+  "agosto",
+  "septiembre",
+  "octubre",
+  "noviembre",
+  "diciembre",
+];
+
+export function calcularPeriodosPendientes(
+  fechaInicioStr: string,
+  diaCorte: number,
+  mesesCobrables: number,
+  mesesPagados: number
+): string[] {
+  if (!fechaInicioStr || mesesCobrables <= 0) return [];
+
+  const parts = fechaInicioStr.split("-").map(Number);
+  const startYear = parts[0];
+  const startMonthIndex = (parts[1] || 1) - 1;
+
+  const periodosCobrables: string[] = [];
+  for (let i = 0; i < mesesCobrables; i++) {
+    const d = new Date(startYear, startMonthIndex + i, 1);
+    const year = d.getFullYear();
+    const month = d.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const day = Math.min(diaCorte || 1, daysInMonth);
+    periodosCobrables.push(`${day} ${MESES_ES[month]} de ${year}`);
+  }
+
+  const pagadosCount = Math.max(0, Math.floor(mesesPagados));
+  return periodosCobrables.slice(pagadosCount);
+}
+
 export class RentasRepository implements IRentasRepository {
   // =========================================================================
   // 1. REGIONES
@@ -39,6 +80,28 @@ export class RentasRepository implements IRentasRepository {
         VALUES (@nombre, @descripcion, 1, @usuarioId, GETDATE());
       `);
     return result.recordset[0];
+  }
+
+  async actualizarRegion(
+    id: number,
+    data: { nombre: string; descripcion?: string | null },
+    usuarioId: number
+  ): Promise<boolean> {
+    const pool = await mssql.connect(dbConfig);
+    const result = await pool
+      .request()
+      .input("id", mssql.Int, id)
+      .input("nombre", mssql.VarChar(100), data.nombre)
+      .input("descripcion", mssql.VarChar(255), data.descripcion || null)
+      .input("usuarioId", mssql.Int, usuarioId).query(`
+        UPDATE dbo.rentas_regiones
+        SET nombre = @nombre,
+            descripcion = @descripcion,
+            usuario_modifico_id = @usuarioId,
+            fecha_modificacion = GETDATE()
+        WHERE id = @id AND activo = 1;
+      `);
+    return (result.rowsAffected[0] ?? 0) > 0;
   }
 
   // =========================================================================
@@ -81,6 +144,30 @@ export class RentasRepository implements IRentasRepository {
         VALUES (@regionId, @nombre, @direccion, 1, @usuarioId, GETDATE());
       `);
     return result.recordset[0];
+  }
+
+  async actualizarLugar(
+    id: number,
+    data: { region_id: number; nombre: string; direccion?: string | null },
+    usuarioId: number
+  ): Promise<boolean> {
+    const pool = await mssql.connect(dbConfig);
+    const result = await pool
+      .request()
+      .input("id", mssql.Int, id)
+      .input("regionId", mssql.Int, data.region_id)
+      .input("nombre", mssql.VarChar(150), data.nombre)
+      .input("direccion", mssql.VarChar(255), data.direccion || null)
+      .input("usuarioId", mssql.Int, usuarioId).query(`
+        UPDATE dbo.rentas_lugares
+        SET region_id = @regionId,
+            nombre = @nombre,
+            direccion = @direccion,
+            usuario_modifico_id = @usuarioId,
+            fecha_modificacion = GETDATE()
+        WHERE id = @id AND activo = 1;
+      `);
+    return (result.rowsAffected[0] ?? 0) > 0;
   }
 
   // =========================================================================
@@ -200,7 +287,8 @@ export class RentasRepository implements IRentasRepository {
     const request = pool.request();
     let query = `
       SELECT c.id, c.local_id, loc.numero_fisico AS local_numero, loc.nickname AS local_nickname,
-             lug.nombre AS lugar_nombre, c.arrendatario_nombre, c.arrendatario_telefono, c.arrendatario_email,
+             lug.nombre AS lugar_nombre, lug.region_id, r.nombre AS region_nombre,
+             c.nombre_comercial, c.arrendatario_nombre, c.arrendatario_telefono, c.arrendatario_email,
              CONVERT(VARCHAR(10), c.fecha_inicio, 120) AS fecha_inicio,
              CONVERT(VARCHAR(10), c.fecha_fin, 120) AS fecha_fin,
              c.monto_renta_mensual, c.dia_corte, c.vigente, c.activo,
@@ -208,6 +296,7 @@ export class RentasRepository implements IRentasRepository {
       FROM dbo.rentas_contratos c
       INNER JOIN dbo.rentas_locales loc ON loc.id = c.local_id AND loc.activo = 1
       INNER JOIN dbo.rentas_lugares lug ON lug.id = loc.lugar_id AND lug.activo = 1
+      LEFT JOIN dbo.rentas_regiones r ON r.id = lug.region_id AND r.activo = 1
       WHERE c.activo = 1
     `;
     if (localId) {
@@ -270,9 +359,11 @@ export class RentasRepository implements IRentasRepository {
   async actualizarContrato(
     id: number,
     data: {
+      nombre_comercial?: string | null;
       arrendatario_nombre: string;
       arrendatario_telefono?: string | null;
       arrendatario_email?: string | null;
+      fecha_inicio?: string | null;
       fecha_fin?: string | null;
       monto_renta_mensual: number;
       dia_corte: number;
@@ -281,29 +372,40 @@ export class RentasRepository implements IRentasRepository {
     usuarioId: number
   ): Promise<boolean> {
     const pool = await mssql.connect(dbConfig);
-    const result = await pool
+    const request = pool
       .request()
       .input("id", mssql.Int, id)
+      .input("nombreComercial", mssql.VarChar(150), data.nombre_comercial || null)
       .input("nombre", mssql.VarChar(150), data.arrendatario_nombre)
       .input("telefono", mssql.VarChar(30), data.arrendatario_telefono || null)
       .input("email", mssql.VarChar(100), data.arrendatario_email || null)
+      .input("fechaInicio", mssql.Date, data.fecha_inicio || null)
       .input("fechaFin", mssql.Date, data.fecha_fin || null)
       .input("monto", mssql.Decimal(12, 2), data.monto_renta_mensual)
       .input("diaCorte", mssql.Int, data.dia_corte)
       .input("vigente", mssql.Bit, data.vigente)
-      .input("usuarioId", mssql.Int, usuarioId).query(`
-        UPDATE dbo.rentas_contratos
-        SET arrendatario_nombre = @nombre,
-            arrendatario_telefono = @telefono,
-            arrendatario_email = @email,
-            fecha_fin = @fechaFin,
-            monto_renta_mensual = @monto,
-            dia_corte = @diaCorte,
-            vigente = @vigente,
-            usuario_modifico_id = @usuarioId,
-            fecha_modificacion = GETDATE()
-        WHERE id = @id AND activo = 1;
-      `);
+      .input("usuarioId", mssql.Int, usuarioId);
+
+    let query = `
+      UPDATE dbo.rentas_contratos
+      SET nombre_comercial = @nombreComercial,
+          arrendatario_nombre = @nombre,
+          arrendatario_telefono = @telefono,
+          arrendatario_email = @email,
+    `;
+    if (data.fecha_inicio) {
+      query += ` fecha_inicio = @fechaInicio, `;
+    }
+    query += `
+          fecha_fin = @fechaFin,
+          monto_renta_mensual = @monto,
+          dia_corte = @diaCorte,
+          vigente = @vigente,
+          usuario_modifico_id = @usuarioId,
+          fecha_modificacion = GETDATE()
+      WHERE id = @id AND activo = 1;
+    `;
+    const result = await request.query(query);
     return (result.rowsAffected[0] ?? 0) > 0;
   }
 
@@ -331,7 +433,7 @@ export class RentasRepository implements IRentasRepository {
     const request = pool.request();
     let query = `
       SELECT p.id, p.contrato_id, loc.nickname AS local_nickname, c.arrendatario_nombre,
-             p.monto, p.meses_cubiertos,
+             p.monto, p.meses_cubiertos, p.periodo_cubierto,
              CONVERT(VARCHAR(10), p.fecha_abono_real, 120) AS fecha_abono_real,
              p.fecha_captura, p.metodo_pago, p.referencia_bancaria, p.nota,
              p.activo, p.usuario_creo_id, u.[user] AS usuario_creo_nombre,
@@ -356,6 +458,7 @@ export class RentasRepository implements IRentasRepository {
       contrato_id: number;
       monto: number;
       meses_cubiertos: number;
+      periodo_cubierto?: string | null;
       fecha_abono_real: string;
       metodo_pago: string;
       referencia_bancaria?: string | null;
@@ -369,21 +472,23 @@ export class RentasRepository implements IRentasRepository {
       .input("contratoId", mssql.Int, data.contrato_id)
       .input("monto", mssql.Decimal(12, 2), data.monto)
       .input("mesesCubiertos", mssql.Decimal(5, 2), data.meses_cubiertos || 1.0)
+      .input("periodoCubierto", mssql.VarChar(150), data.periodo_cubierto || null)
       .input("fechaAbonoReal", mssql.Date, data.fecha_abono_real)
       .input("metodoPago", mssql.VarChar(50), data.metodo_pago || "Efectivo")
       .input("referencia", mssql.VarChar(100), data.referencia_bancaria || null)
       .input("nota", mssql.VarChar(500), data.nota || null)
       .input("usuarioId", mssql.Int, usuarioId).query(`
         INSERT INTO dbo.rentas_pagos (
-          contrato_id, monto, meses_cubiertos, fecha_abono_real, fecha_captura,
+          contrato_id, monto, meses_cubiertos, periodo_cubierto, fecha_abono_real, fecha_captura,
           metodo_pago, referencia_bancaria, nota, activo, usuario_creo_id, fecha_creacion
         )
         OUTPUT INSERTED.id, INSERTED.contrato_id, INSERTED.monto, INSERTED.meses_cubiertos,
+               INSERTED.periodo_cubierto,
                CONVERT(VARCHAR(10), INSERTED.fecha_abono_real, 120) AS fecha_abono_real,
                INSERTED.fecha_captura, INSERTED.metodo_pago, INSERTED.referencia_bancaria,
                INSERTED.nota, INSERTED.activo, INSERTED.usuario_creo_id, INSERTED.fecha_creacion
         VALUES (
-          @contratoId, @monto, @mesesCubiertos, @fechaAbonoReal, GETDATE(),
+          @contratoId, @monto, @mesesCubiertos, @periodoCubierto, @fechaAbonoReal, GETDATE(),
           @metodoPago, @referencia, @nota, 1, @usuarioId, GETDATE()
         );
       `);
@@ -395,6 +500,7 @@ export class RentasRepository implements IRentasRepository {
     data: {
       monto: number;
       meses_cubiertos: number;
+      periodo_cubierto?: string | null;
       fecha_abono_real: string;
       metodo_pago: string;
       referencia_bancaria?: string | null;
@@ -456,6 +562,7 @@ export class RentasRepository implements IRentasRepository {
         .input("id", mssql.Int, id)
         .input("monto", mssql.Decimal(12, 2), data.monto)
         .input("mesesCubiertos", mssql.Decimal(5, 2), data.meses_cubiertos)
+        .input("periodoCubierto", mssql.VarChar(150), data.periodo_cubierto || null)
         .input("fechaAbonoReal", mssql.Date, data.fecha_abono_real)
         .input("metodoPago", mssql.VarChar(50), data.metodo_pago)
         .input("referencia", mssql.VarChar(100), data.referencia_bancaria || null)
@@ -464,6 +571,7 @@ export class RentasRepository implements IRentasRepository {
           UPDATE dbo.rentas_pagos
           SET monto = @monto,
               meses_cubiertos = @mesesCubiertos,
+              periodo_cubierto = @periodoCubierto,
               fecha_abono_real = @fechaAbonoReal,
               metodo_pago = @metodoPago,
               referencia_bancaria = @referencia,
@@ -635,15 +743,29 @@ export class RentasRepository implements IRentasRepository {
       ORDER BY meses_adeudo DESC, loc.nickname ASC;
     `);
 
-    return result.recordset.map((row) => ({
-      ...row,
-      monto_renta_mensual: Number(row.monto_renta_mensual),
-      meses_cobrables: Number(row.meses_cobrables),
-      meses_pagados: Number(row.meses_pagados),
-      total_pagado: Number(row.total_pagado),
-      meses_adeudo: Number(row.meses_adeudo),
-      monto_adeudo: Number(row.monto_adeudo),
-    }));
+    return result.recordset.map((row) => {
+      const mesesCobrables = Number(row.meses_cobrables);
+      const mesesPagados = Number(row.meses_pagados);
+      const diaCorte = Number(row.dia_corte) || 1;
+      const periodosPendientes = calcularPeriodosPendientes(
+        row.fecha_inicio,
+        diaCorte,
+        mesesCobrables,
+        mesesPagados
+      );
+
+      return {
+        ...row,
+        monto_renta_mensual: Number(row.monto_renta_mensual),
+        meses_cobrables: mesesCobrables,
+        meses_pagados: mesesPagados,
+        total_pagado: Number(row.total_pagado),
+        meses_adeudo: Number(row.meses_adeudo),
+        monto_adeudo: Number(row.monto_adeudo),
+        periodos_pendientes: periodosPendientes,
+        periodos_pendientes_texto: periodosPendientes.join(", "),
+      };
+    });
   }
 
   // =========================================================================
