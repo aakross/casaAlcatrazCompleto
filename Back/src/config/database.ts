@@ -4,6 +4,7 @@ export const dbConfig: mssql.config = {
   user: process.env.DB_USER || 'sa',
   password: process.env.DB_PASSWORD || 'TuPasswordSeguro123',
   server: process.env.DB_SERVER || 'localhost',
+  port: Number(process.env.DB_PORT) || 1433,
   database: process.env.DB_NAME || 'MiBaseDatos',
   options: {
     encrypt: false, 

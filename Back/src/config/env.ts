@@ -8,9 +8,9 @@ const rawEnv = (process.env.NODE_ENV || process.env.APP_ENV || "dev").toLowerCas
 const isProduction = rawEnv === "prd" || rawEnv === "prod" || rawEnv === "production";
 const envFileName = isProduction ? ".env.production" : ".env.development";
 
-// 2. Sobrescribimos con el archivo de ambiente seleccionado (.env.development o .env.production)
+// 2. Sobrescribimos con el archivo de ambiente, pero respetando variables ya inyectadas por el entorno (Render/Docker)
 const envFilePath = path.resolve(process.cwd(), envFileName);
-dotenv.config({ path: envFilePath, override: true });
+dotenv.config({ path: envFilePath, override: false });
 
 console.log(`🌍 [Entorno] Modo activo: ${isProduction ? "PRODUCCIÓN (prd)" : "DESARROLLO (dev)"}`);
 console.log(`📁 [Entorno] Archivo cargado: ${envFileName}`);

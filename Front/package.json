@@ -7,6 +7,7 @@
     "dev": "vite",
     "dev:prod": "vite --mode production",
     "build": "tsc -b && vite build",
+    "postbuild": "node -e \"const fs=require('fs'),p=require('path'),d='dist',t='dist/casaalcatraz';if(!fs.existsSync(t))fs.mkdirSync(t,{recursive:true});fs.cpSync(p.join(d,'assets'),p.join(t,'assets'),{recursive:true});fs.copyFileSync(p.join(d,'index.html'),p.join(t,'index.html'));fs.copyFileSync(p.join(d,'logo.png'),p.join(t,'logo.png'));fs.copyFileSync(p.join(d,'fondo.jpeg'),p.join(t,'fondo.jpeg'));\"",
     "build:dev": "tsc -b && vite build --mode development",
     "build:prod": "tsc -b && vite build --mode production",
     "lint": "eslint .",

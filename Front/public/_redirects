@@ -1,0 +1,7 @@
+# Redirección forzada de la raíz hacia la base de la SPA
+/                 /casaalcatraz/             301!
+
+# Enrutamiento SPA
+/casaalcatraz/*   /casaalcatraz/index.html   200
+/casaalcatraz     /casaalcatraz/index.html   200
+/*                /casaalcatraz/index.html   200
