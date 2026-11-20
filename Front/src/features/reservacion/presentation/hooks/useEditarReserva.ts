@@ -199,6 +199,8 @@ export const useEditarReserva = (onSuccess?: () => void) => {
         totalDiasReservacion: Number(data.diasHospedaje),
         precioNoche: Number(data.precioNoche),
         montoTotal: Number(data.montoTotal),
+        porcentajeComision: Number(data.porcentajeComision || 0),
+        montoGarantia: Number(data.montoGarantia || 0),
         personasHospedadas: Number(data.huespedes),
         usuarioId: Number(useAuthStore.getState().userId || 1),
         origenReserva: String(data.origenReserva).trim(),

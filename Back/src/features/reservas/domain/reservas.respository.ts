@@ -82,6 +82,8 @@ export interface ActualizarReservaInput {
   totalDiasReservacion: number;
   precioNoche: number;
   montoTotal: number;
+  porcentajeComision?: number;
+  montoGarantia?: number;
   personasHospedadas: number;
   usuarioId: number;
   extras?: Array<{

@@ -11,7 +11,6 @@ export const useDetalleReserva = (reservaId: number | null) => {
   const [totalHospedajeBase, setTotalHospedajeBase] = useState(0);
   const [totalExtras, setTotalExtras] = useState(0);
   const [montoGarantia, setMontoGarantia] = useState(0);
-  const [granTotalEstancia, setGranTotalEstancia] = useState(0);
   const [extrasDesglosados, setExtrasDesglosados] = useState<any[]>([]);
   const [porcentajeComision, setPorcentajeComision] = useState(0);
   const [totalComisiones, setTotalComisiones] = useState(0);
@@ -45,11 +44,6 @@ export const useDetalleReserva = (reservaId: number | null) => {
       setExtrasDesglosados(reserva.extras || []);
       setPorcentajeComision(Number(reserva.porcentajeComision || 0));
       setTotalComisiones(comisionMonto);
-
-      // 🌟 FÓRMULA NUEVA: Costo de reserva original + servicios extras - Comisión deducida de la plataforma
-      // Caso 4: 70000 + 2000 - 7000 = 65000
-      const totalConsolidado = montoTotalReserva + extrasMonto - comisionMonto;
-      setGranTotalEstancia(totalConsolidado);
     } catch (error) {
       console.error("Error al consultar detalles consolidados:", error);
     } finally {
@@ -66,15 +60,41 @@ export const useDetalleReserva = (reservaId: number | null) => {
   const costoTotal =
     totalHospedajeBase || primerRegistro?.montoTotalReserva || 0;
 
-  // Sumamos los abonos reales del cliente
-  const totalPagadoCliente = pagos.reduce(
-    (sum, item) => sum + item.montoBrutoPago,
+  // Separamos abonos monetarios reales (Efectivo/Transferencia/Tarjeta) de deducciones (Otros Gastos)
+  const pagosMonetarios = pagos.filter((item) => Number(item.origenDineroId) !== 4);
+  const pagosOtrosCargos = pagos.filter((item) => Number(item.origenDineroId) === 4);
+
+  const totalOtrosGastos = pagosOtrosCargos.reduce(
+    (sum, item) => sum + (Number(item.montoBrutoPago) || 0),
     0,
   );
 
-  // 🌟 BALANCE PENDIENTE: Lo que realmente le falta depositar al cliente sobre la nueva estancia total
-  // Caso 4: 65000 - 31000 = 34000
-  const balancePendiente = granTotalEstancia - totalPagadoCliente;
+  const conceptosOtrosGastos = pagosOtrosCargos
+    .map((item) => item.observaciones || item.conceptoPago)
+    .filter(Boolean) as string[];
+
+  // Sumamos únicamente los abonos de dinero real que entraron a caja/banco
+  const totalPagadoCliente = pagosMonetarios.reduce(
+    (sum, item) => sum + (Number(item.montoBrutoPago) || 0),
+    0,
+  );
+
+  // Redondeo a 2 decimales para blindar contra imprecisiones de punto flotante IEEE 754
+  const redondear = (v: number) => Math.round((v + Number.EPSILON) * 100) / 100;
+
+  // 🌟 FÓRMULA CONSOLIDADA: Hospedaje base + extras - comisiones plataforma - otros cargos deducidos
+  const granTotalCalculado = redondear(
+    Math.max(0, totalHospedajeBase + totalExtras - totalComisiones - totalOtrosGastos),
+  );
+
+  // 🌟 BALANCE PENDIENTE: Lo que falta por depositar en caja/banco
+  let balanceCalculado = redondear(granTotalCalculado - totalPagadoCliente);
+
+  // 🌟 REGLA DE TOLERANCIA DE CENTAVOS: Si la diferencia es menor a 50 centavos (ej. sobrepago de $0.09 en Coral Gómez),
+  // se considera liquidado ($0.00)
+  if (Math.abs(balanceCalculado) < 0.50) {
+    balanceCalculado = 0;
+  }
 
   return {
     pagos,
@@ -87,23 +107,24 @@ export const useDetalleReserva = (reservaId: number | null) => {
           fechaInicio: primerRegistro.fechaInicio,
           fechaFin: primerRegistro.fechaFin,
           precioNoche,
-          // estado: primerRegistro.estadoReservacion,
           estado:
             primerRegistro.estadoReservacion === "Finalizado"
               ? "Finalizado"
-              : balancePendiente <= 0
+              : balanceCalculado <= 0
                 ? "Liquidado"
                 : "Pendiente",
         }
       : null,
     costoTotal,
     totalPagadoCliente,
-    balancePendiente, // Retorna la fórmula exacta corregida
+    balancePendiente: balanceCalculado,
     totalComisiones,
     totalHospedajeBase,
     totalExtras,
     montoGarantia,
-    granTotalEstancia, // Retorna la fórmula exacta corregida
+    granTotalEstancia: granTotalCalculado,
+    totalOtrosGastos,
+    conceptosOtrosGastos,
     extrasDesglosados,
     porcentajeComision,
   };

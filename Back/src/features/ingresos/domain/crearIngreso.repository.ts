@@ -8,10 +8,13 @@ export interface Ingreso {
   montoComision: number;
   userCreate: number;
   fechaDeposito: Date;
+  observaciones?: string;
 }
 
 export interface DetallePagosCliente {
+  id?: number;
   folioReserva: number;
+  origenDineroId?: number;
   nombre: string;
   apellido: string;
   telefono?: string;
@@ -28,6 +31,7 @@ export interface DetallePagosCliente {
   montoNetoPago: number;
   fechaRegistroPago: string | Date;
   fechaDeposito: string | Date;
+  observaciones?: string;
 }
 
 export interface IIngresoRepository {

@@ -27,13 +27,14 @@ CREATE PROCEDURE [dbo].[AAC_Alcatraz_Actualizar_Reservacion]
 	@ApellidoCliente VARCHAR(100) = NULL,
 	@Telefono VARCHAR(20) = NULL,
 	@OrigenReservaId INT = NULL,
-	@ExtrasXml XML = NULL
+	@ExtrasXml XML = NULL,
+	@PorcentajeComision DECIMAL(5,2) = NULL,
+	@MontoGarantia MONEY = NULL
 AS
 BEGIN
 	SET XACT_ABORT ON;
 	SET NOCOUNT ON;
-	DECLARE @PorcentajeComision DECIMAL(5,2);
-	DECLARE @MontoComision MONEY;
+	DECLARE @ComisionCalculada MONEY;
 	DECLARE @TotalExtras MONEY = 0;
 	DECLARE @ClienteId INT;
 	
@@ -66,12 +67,23 @@ BEGIN
 		FROM AAC_Alcatraz_reservaciones 
 		WHERE id = @ReservacionId;
 
-		-- B. Recuperar el % de comisión original blindándolo contra nulos históricos 
-		SELECT @PorcentajeComision = ISNULL(porcentaje_comision, 0.00) 
-		FROM AAC_Alcatraz_reservaciones 
-		WHERE id = @ReservacionId;
+		-- B. Si no se envió @PorcentajeComision, recuperar el existente blindándolo contra nulos
+		IF @PorcentajeComision IS NULL
+		BEGIN
+			SELECT @PorcentajeComision = ISNULL(porcentaje_comision, 0.00) 
+			FROM AAC_Alcatraz_reservaciones 
+			WHERE id = @ReservacionId;
+		END
+
+		-- C. Si no se envió @MontoGarantia, recuperar el existente
+		IF @MontoGarantia IS NULL
+		BEGIN
+			SELECT @MontoGarantia = ISNULL(monto_garantia, 0.00)
+			FROM AAC_Alcatraz_reservaciones
+			WHERE id = @ReservacionId;
+		END
 		
-		-- C. Actualizar los datos del cliente de manera segura si las variables existen
+		-- D. Actualizar los datos del cliente de manera segura si las variables existen
 		IF @ClienteId IS NOT NULL AND @NombreCliente IS NOT NULL
 		BEGIN
 			UPDATE AAC_Alcatraz_clientes
@@ -111,9 +123,9 @@ BEGIN
 		FROM AAC_Alcatraz_reservacion_extras WHERE reservacion_id = @ReservacionId;
 
 		-- 2. Recalcular la comisión sobre el nuevo monto base de hospedaje
-		SET @MontoComision = @MontoTotal * (@PorcentajeComision / 100.0);
+		SET @ComisionCalculada = ROUND(@MontoTotal * (@PorcentajeComision / 100.0), 2);
 
-		-- 3. Actualizar la cabecera con los nuevos datos y el nuevo neto consolidado
+		-- 3. Actualizar la cabecera con los nuevos datos, comisión y garantía
 		UPDATE AAC_Alcatraz_reservaciones
 		SET 
 			fecha_inicio = @FechaInicio,
@@ -121,8 +133,10 @@ BEGIN
 			total_dias_reservados = @TotalDiasReservados,
 			precio_noche = @PrecioNoche,
 			monto_total = @MontoTotal,
-			monto_comision = @MontoComision,
-			monto_neto = (@MontoTotal + @TotalExtras) - @MontoComision,
+			porcentaje_comision = @PorcentajeComision,
+			monto_comision = @ComisionCalculada,
+			monto_neto = (@MontoTotal + @TotalExtras) - @ComisionCalculada,
+			monto_garantia = @MontoGarantia,
 			personas_hospedadas = @PersonasHospedadas,
 			origen_reserva_id = ISNULL(@OrigenReservaId, origen_reserva_id),
 			user_update = @IdUsuario,
@@ -218,7 +232,8 @@ CREATE PROCEDURE [dbo].[AAC_Alcatraz_AgregarPagoYFinalizarReserva]
     @aplica_comision BIT,
     @monto_comision MONEY,
     @user_create INT,
-    @fecha_deposito DATE = NULL
+    @fecha_deposito DATE = NULL,
+    @observaciones VARCHAR(200) = NULL
 AS
 BEGIN
 	SET XACT_ABORT ON;
@@ -250,7 +265,7 @@ BEGIN
         FROM AAC_Alcatraz_reservacion_extras
         WHERE reservacion_id = @reservacion_id;
         
-        SET @gran_total_liquidar = @monto_total_reserva - @total_comisiones + @total_extras;
+        SET @gran_total_liquidar = (@monto_total_reserva - @total_comisiones) + @total_extras;
 
         -- 3. Sumar todos los pagos que ya se le habían hecho a esta reservación
         SELECT @total_pagado_historico = ISNULL(SUM(monto_bruto), 0) 
@@ -263,15 +278,15 @@ BEGIN
         -- 5. Insertar el nuevo pago en la tabla
         INSERT INTO AAC_Alcatraz_pagos_cliente (
             origen_dinero_id, reservacion_id, concepto_pago_id, monto_bruto, 
-            aplica_comision, monto_comision, user_create, created_at, fecha_deposito
+            aplica_comision, monto_comision, user_create, created_at, fecha_deposito, observaciones
         )
         VALUES (
             @origen_dinero_id, @reservacion_id, @concepto_pago_id, @monto_bruto, 
-            @aplica_comision, @monto_comision, @user_create, GETDATE(), ISNULL(@fecha_deposito, GETDATE())
+            @aplica_comision, @monto_comision, @user_create, GETDATE(), ISNULL(@fecha_deposito, GETDATE()), @observaciones
         );
 
-        -- 6. Si lo pagado es igual o mayor al total, actualizar el estatus de la reserva
-        IF @nuevo_total_pagado >= @gran_total_liquidar
+        -- 6. Si lo pagado es igual o mayor al total (con tolerancia de 0.50 MXN), actualizar el estatus de la reserva
+        IF @nuevo_total_pagado >= (@gran_total_liquidar - 0.50)
         BEGIN
             UPDATE AAC_Alcatraz_reservaciones
             SET estado_reservacion_id = @id_estado_finalizado,

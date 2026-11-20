@@ -206,6 +206,8 @@ export class ReservasController {
         nombreHuesped,
         apellidoHuesped,
         telefono,
+        porcentajeComision,
+        montoGarantia,
       } = req.body;
 
       // 1. Extraemos prioritariamente el ID del usuario desde req.user (inyectado por el middleware JWT)
@@ -244,7 +246,9 @@ export class ReservasController {
           ? String(apellidoHuesped).trim()
           : null,
         telefono: telefono ? String(telefono).trim() : null,
-        origenReservaId: req.body.origenReservaId ? Number(req.body.origenReservaId) : 1
+        origenReservaId: req.body.origenReservaId ? Number(req.body.origenReservaId) : 1,
+        porcentajeComision: porcentajeComision !== undefined && porcentajeComision !== null ? Number(porcentajeComision) : undefined,
+        montoGarantia: montoGarantia !== undefined && montoGarantia !== null ? Number(montoGarantia) : undefined,
       });
       res.status(200).json(result);
     } catch (error) {

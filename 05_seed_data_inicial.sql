@@ -86,6 +86,10 @@ IF NOT EXISTS (SELECT 1 FROM [dbo].[AAC_Alcatraz_origen_dinero] WHERE id = 2)
 IF NOT EXISTS (SELECT 1 FROM [dbo].[AAC_Alcatraz_origen_dinero] WHERE id = 3)
     INSERT INTO [dbo].[AAC_Alcatraz_origen_dinero] (id, nombre, descripcion, created_at, user_create_id)
     VALUES (3, 'Tarjeta', 'Terminal de crédito o débito', GETDATE(), 1);
+
+IF NOT EXISTS (SELECT 1 FROM [dbo].[AAC_Alcatraz_origen_dinero] WHERE id = 4)
+    INSERT INTO [dbo].[AAC_Alcatraz_origen_dinero] (id, nombre, descripcion, created_at, user_create_id)
+    VALUES (4, 'Otro Cargo', 'Deducción operativa o publicidad', GETDATE(), 1);
 SET IDENTITY_INSERT [dbo].[AAC_Alcatraz_origen_dinero] OFF;
 GO
 
@@ -106,6 +110,10 @@ IF NOT EXISTS (SELECT 1 FROM [dbo].[AAC_Alcatraz_concepto_pago] WHERE id = 3)
 IF NOT EXISTS (SELECT 1 FROM [dbo].[AAC_Alcatraz_concepto_pago] WHERE id = 4)
     INSERT INTO [dbo].[AAC_Alcatraz_concepto_pago] (id, descripcion, created_at, user_create_id)
     VALUES (4, 'Descuento o ajuste', GETDATE(), 1);
+
+IF NOT EXISTS (SELECT 1 FROM [dbo].[AAC_Alcatraz_concepto_pago] WHERE id = 5)
+    INSERT INTO [dbo].[AAC_Alcatraz_concepto_pago] (id, descripcion, created_at, user_create_id)
+    VALUES (5, 'Otro Gasto / Publicidad', GETDATE(), 1);
 SET IDENTITY_INSERT [dbo].[AAC_Alcatraz_concepto_pago] OFF;
 GO
 

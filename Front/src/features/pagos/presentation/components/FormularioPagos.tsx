@@ -83,6 +83,7 @@ export const RegistrarPagoForm = ({
             <option value={1}>Anticipo / Reserva</option>
             <option value={2}>Abono</option>
             <option value={3}>Liquidación</option>
+            <option value={5}>Otro Gasto / Publicidad</option>
             {/* <option value={4}>Depósito en Garantía</option> */}
           </select>
           {errors.conceptoPagoId && (
@@ -113,16 +114,16 @@ export const RegistrarPagoForm = ({
           )}
         </div>
 
-        {/* Campo: Origen de Dinero / Método de Pago (Botones Estilizados sin Lógica) */}
+        {/* Campo: Origen de Dinero / Método de Pago */}
         <div className="flex flex-col gap-1.5">
           <label className="font-label text-sm font-medium text-surface">
-            Método de Pago
+            Método de Pago o Deducción
           </label>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
             <button
               type="button"
               onClick={() => seleccionarOrigenDinero(1)} // ID 1 = Efectivo
-              className={`flex items-center justify-center gap-2 py-3 px-4 rounded-lg border transition-all font-medium cursor-pointer
+              className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg border transition-all text-xs sm:text-sm font-medium cursor-pointer
                 ${
                   origenDineroId === 1
                     ? "bg-primary text-white border-primary shadow-sm"
@@ -130,7 +131,7 @@ export const RegistrarPagoForm = ({
                 }`}
             >
               <svg
-                className="w-5 h-5"
+                className="w-4 h-4 shrink-0"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -148,7 +149,7 @@ export const RegistrarPagoForm = ({
             <button
               type="button"
               onClick={() => seleccionarOrigenDinero(2)} // ID 2 = Transferencia
-              className={`flex items-center justify-center gap-2 py-3 px-4 rounded-lg border transition-all font-medium cursor-pointer
+              className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg border transition-all text-xs sm:text-sm font-medium cursor-pointer
                 ${
                   origenDineroId === 2
                     ? "bg-primary text-white border-primary shadow-sm"
@@ -156,7 +157,7 @@ export const RegistrarPagoForm = ({
                 }`}
             >
               <svg
-                className="w-5 h-5"
+                className="w-4 h-4 shrink-0"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -170,6 +171,32 @@ export const RegistrarPagoForm = ({
               </svg>
               Transferencia
             </button>
+
+            <button
+              type="button"
+              onClick={() => seleccionarOrigenDinero(4)} // ID 4 = Otro Cargo / Gasto
+              className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg border transition-all text-xs sm:text-sm font-medium cursor-pointer
+                ${
+                  origenDineroId === 4
+                    ? "bg-amber-700 text-white border-amber-700 shadow-sm"
+                    : "bg-surfacecontainer text-surface border-gray-300 hover:border-secondary"
+                }`}
+            >
+              <svg
+                className="w-4 h-4 shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"
+                />
+              </svg>
+              Otro Gasto
+            </button>
           </div>
           {errors.origenDineroId && (
             <p className="text-error text-xs font-medium">
@@ -177,6 +204,30 @@ export const RegistrarPagoForm = ({
             </p>
           )}
         </div>
+
+        {/* Campo Dinámico: Concepto de Otro Cargo / Gasto */}
+        {origenDineroId === 4 && (
+          <div className="flex flex-col gap-1.5 p-3 rounded-lg bg-amber-50/60 border border-amber-200">
+            <label className="font-label text-sm font-bold text-amber-900">
+              Concepto del Cargo o Gasto <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              placeholder="Ej. Pago de publicidad, Manejo de cuenta..."
+              {...register("observaciones")}
+              className={`w-full px-3 py-2 rounded-lg border bg-white outline-none transition-all text-sm
+                ${errors.observaciones ? "border-error focus:ring-1 focus:ring-error" : "border-amber-300 focus:border-amber-500 focus:ring-1 focus:ring-amber-500"}`}
+            />
+            {errors.observaciones && (
+              <p className="text-error text-xs font-medium">
+                {errors.observaciones.message}
+              </p>
+            )}
+            <p className="text-amber-700 text-xs italic">
+              Este cargo se descontará del Gran Total Estancia como una deducción operativa directa.
+            </p>
+          </div>
+        )}
 
         {/* Campo: Aplica Comisión */}
         <div className="flex items-center gap-3 bg-surfacecontainer/50 p-3 rounded-lg border border-gray-200 hidden">

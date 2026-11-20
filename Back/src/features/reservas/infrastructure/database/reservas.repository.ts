@@ -26,12 +26,12 @@ export class ReservasRepository implements IReservaRepository {
         ISNULL(res.porcentaje_comision, 0.00) AS porcentajeComision,
         ISNULL(res.monto_comision, 0.00) AS montoComision,     
         ISNULL((SELECT SUM(ex.monto) FROM AAC_Alcatraz_reservacion_extras ex WHERE ex.reservacion_id = res.id), 0.00) AS totalExtras,
-        (res.monto_total + ISNULL((SELECT SUM(ex.monto) FROM AAC_Alcatraz_reservacion_extras ex WHERE ex.reservacion_id = res.id), 0.00)) AS granTotalEstancia,
+        ((res.monto_total - ISNULL(res.monto_comision, 0.00)) + ISNULL((SELECT SUM(ex.monto) FROM AAC_Alcatraz_reservacion_extras ex WHERE ex.reservacion_id = res.id), 0.00)) AS granTotalEstancia,
         ISNULL((SELECT SUM(p.monto_bruto) FROM AAC_Alcatraz_pagos_cliente p WHERE p.reservacion_id = res.id), 0) AS montoPagado,
-        ((res.monto_total + ISNULL((SELECT SUM(ex.monto) FROM AAC_Alcatraz_reservacion_extras ex WHERE ex.reservacion_id = res.id), 0.00)) - ISNULL((SELECT SUM(p.monto_bruto) FROM AAC_Alcatraz_pagos_cliente p WHERE p.reservacion_id = res.id), 0)) AS saldoPendiente,
+        ROUND((((res.monto_total - ISNULL(res.monto_comision, 0.00)) + ISNULL((SELECT SUM(ex.monto) FROM AAC_Alcatraz_reservacion_extras ex WHERE ex.reservacion_id = res.id), 0.00)) - ISNULL((SELECT SUM(p.monto_bruto) FROM AAC_Alcatraz_pagos_cliente p WHERE p.reservacion_id = res.id), 0)), 2) AS saldoPendiente,
         CASE 
           WHEN ISNULL((SELECT SUM(p.monto_bruto) FROM AAC_Alcatraz_pagos_cliente p WHERE p.reservacion_id = res.id), 0) >= 
-               (res.monto_total + ISNULL((SELECT SUM(ex.monto) FROM AAC_Alcatraz_reservacion_extras ex WHERE ex.reservacion_id = res.id), 0.00)) THEN 'Pagado'
+               (((res.monto_total - ISNULL(res.monto_comision, 0.00)) + ISNULL((SELECT SUM(ex.monto) FROM AAC_Alcatraz_reservacion_extras ex WHERE ex.reservacion_id = res.id), 0.00)) - 0.50) THEN 'Pagado'
           ELSE 'Pendiente'
         END AS estatusPago
       FROM AAC_Alcatraz_reservaciones res
@@ -106,11 +106,11 @@ export class ReservasRepository implements IReservaRepository {
 
         -- Subconsultas para desgloses juntos y separados amarrados
         ISNULL((SELECT SUM(ex.monto) FROM AAC_Alcatraz_reservacion_extras ex WHERE ex.reservacion_id = res.id), 0.00) AS totalExtras,
-        (res.monto_total + ISNULL((SELECT SUM(ex.monto) FROM AAC_Alcatraz_reservacion_extras ex WHERE ex.reservacion_id = res.id), 0.00)) AS granTotalEstancia,
-        ((res.monto_total + ISNULL((SELECT SUM(ex.monto) FROM AAC_Alcatraz_reservacion_extras ex WHERE ex.reservacion_id = res.id), 0.00)) - ISNULL(pagos.montoPagado, 0)) AS saldoPendiente,
+        ((res.monto_total - ISNULL(res.monto_comision, 0.00)) + ISNULL((SELECT SUM(ex.monto) FROM AAC_Alcatraz_reservacion_extras ex WHERE ex.reservacion_id = res.id), 0.00)) AS granTotalEstancia,
+        ROUND((((res.monto_total - ISNULL(res.monto_comision, 0.00)) + ISNULL((SELECT SUM(ex.monto) FROM AAC_Alcatraz_reservacion_extras ex WHERE ex.reservacion_id = res.id), 0.00)) - ISNULL(pagos.montoPagado, 0)), 2) AS saldoPendiente,
         
         CASE 
-          WHEN ISNULL(pagos.montoPagado, 0) >= (res.monto_total + ISNULL((SELECT SUM(ex.monto) FROM AAC_Alcatraz_reservacion_extras ex WHERE ex.reservacion_id = res.id), 0.00)) THEN 'Pagado'
+          WHEN ISNULL(pagos.montoPagado, 0) >= (((res.monto_total - ISNULL(res.monto_comision, 0.00)) + ISNULL((SELECT SUM(ex.monto) FROM AAC_Alcatraz_reservacion_extras ex WHERE ex.reservacion_id = res.id), 0.00)) - 0.50) THEN 'Pagado'
           ELSE 'Pendiente'
         END AS estatusPago,
 
@@ -351,7 +351,21 @@ export class ReservasRepository implements IReservaRepository {
         .input("Telefono", mssql.VarChar(20), input.telefono || null)
         .input("NombreCliente", mssql.VarChar(100), input.nombreHuesped || null)
         .input("ExtrasXml", mssql.Xml, extrasXml)
-        .input("OrigenReservaId", mssql.Int, input.origenReservaId || null) 
+        .input("OrigenReservaId", mssql.Int, input.origenReservaId || null)
+        .input(
+          "PorcentajeComision",
+          mssql.Decimal(5, 2),
+          input.porcentajeComision !== undefined && input.porcentajeComision !== null
+            ? input.porcentajeComision
+            : null,
+        )
+        .input(
+          "MontoGarantia",
+          mssql.Decimal(10, 2),
+          input.montoGarantia !== undefined && input.montoGarantia !== null
+            ? input.montoGarantia
+            : null,
+        )
         .execute("AAC_Alcatraz_Actualizar_Reservacion");
 
       return {

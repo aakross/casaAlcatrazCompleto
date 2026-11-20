@@ -6,18 +6,31 @@ import { ApiPagoRepository } from "../../infrastructure/api-pago.repository";
 import { RegistrarPagoUseCase } from "../../domain/registrar-pago.usecase";
 import { notify } from "../../../../core/components/notifierTostify";
 
-export const pagoSchema = z.object({
-  reservacionId: z.number(),
-  userCreate: z.number(),
-  montoBruto: z
-    .number("El monto bruto es requerido") // Si tu versión da problemas aquí, usa solo z.number()
-    .positive("El monto debe ser mayor a 0"),
-  conceptoPagoId: z.number(),
-  origenDineroId: z.number(),
-  aplicaComision: z.boolean(),
-  montoComision: z.number().min(0, "La comisión no puede ser negativa"),
-  fechaDeposito: z.string().nonempty("La fecha del depósito es obligatoria"),
-});
+export const pagoSchema = z
+  .object({
+    reservacionId: z.number(),
+    userCreate: z.number(),
+    montoBruto: z
+      .number("El monto bruto es requerido")
+      .positive("El monto debe ser mayor a 0"),
+    conceptoPagoId: z.number(),
+    origenDineroId: z.number(),
+    aplicaComision: z.boolean(),
+    montoComision: z.number().min(0, "La comisión no puede ser negativa"),
+    fechaDeposito: z.string().nonempty("La fecha del depósito es obligatoria"),
+    observaciones: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.origenDineroId === 4) {
+      if (!data.observaciones || data.observaciones.trim().length < 2) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Debes especificar el concepto del cargo o gasto (ej. Pago de publicidad)",
+          path: ["observaciones"],
+        });
+      }
+    }
+  });
 
 export const pagoSchemaValidado = pagoSchema.superRefine((data, ctx) => {
   if (typeof data.montoBruto !== "number" || isNaN(data.montoBruto)) {
@@ -84,6 +97,7 @@ export const useFormularioPagos = ({
       aplicaComision: false,
       montoComision: 0,
       fechaDeposito: new Date().toISOString().split("T")[0],
+      observaciones: "",
     },
   });
 
@@ -95,6 +109,14 @@ export const useFormularioPagos = ({
       setValue("montoComision", 0);
     }
   }, [aplicaComision, setValue]);
+
+  useEffect(() => {
+    if (origenDineroId === 4) {
+      setValue("conceptoPagoId", 5);
+    } else if (watch("conceptoPagoId") === 5) {
+      setValue("conceptoPagoId", 1);
+    }
+  }, [origenDineroId, setValue, watch]);
 
   const onSubmit = async (data: PagoFormValues) => {
     try {

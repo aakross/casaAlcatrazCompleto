@@ -24,6 +24,7 @@ export class IngresosController {
         montoComision,
         userCreate,
         fechaDeposito,
+        observaciones,
       } = req.body;
 
       if (
@@ -52,6 +53,7 @@ export class IngresosController {
         montoComision: Number(montoComision),
         userCreate: Number(userCreate),
         fechaDeposito: new Date(fechaDeposito),
+        observaciones: observaciones ? String(observaciones).trim() : undefined,
       });
 
       res.status(201).json(result);

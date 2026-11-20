@@ -19,6 +19,8 @@ export interface IngresoApiData {
   montoNetoPago: number;
   fechaRegistroPago: string;
   fechaDeposito: string;
+  origenDineroId?: number;
+  observaciones?: string;
 }
 
 export interface IIngresoClientRepository {

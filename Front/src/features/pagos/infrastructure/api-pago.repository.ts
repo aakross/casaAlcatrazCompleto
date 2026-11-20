@@ -13,6 +13,7 @@ export class ApiPagoRepository implements IPagoRepository {
       montoComision: pago.montoComision,
       userCreate: pago.userCreate,
       fechaDeposito: pago.fechaDeposito,
+      observaciones: pago.observaciones || null,
     };
 
     await apiClient.post("/ingresos/crear-ingreso", payload);

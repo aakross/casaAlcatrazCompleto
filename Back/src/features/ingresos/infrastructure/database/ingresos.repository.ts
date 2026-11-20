@@ -23,6 +23,7 @@ export class IngresosRepository implements IIngresoRepository {
         .input("monto_comision", mssql.Decimal(10, 2), crear.montoComision)
         .input("user_create", mssql.Int, crear.userCreate)
         .input("fecha_deposito", mssql.Date, crear.fechaDeposito)
+        .input("observaciones", mssql.VarChar(200), crear.observaciones || null)
         .execute("dbo.AAC_Alcatraz_AgregarPagoYFinalizarReserva");
     } catch (error) {
       throw new Error(
@@ -54,7 +55,9 @@ export class IngresosRepository implements IIngresoRepository {
           pagos.monto_comision,
           pagos.monto_neto,
           pagos.created_at AS PagoRegistradoEl,
-          pagos.fecha_deposito AS FechaDeposito
+          pagos.fecha_deposito AS FechaDeposito,
+          pagos.origen_dinero_id AS origenDineroId,
+          pagos.observaciones AS Observaciones
         FROM AAC_Alcatraz_reservaciones res
           JOIN AAC_Alcatraz_clientes cli ON cli.id = res.cliente_id
           JOIN AAC_Alcatraz_estado_reservacion est ON est.id = res.estado_reservacion_id
@@ -84,6 +87,8 @@ export class IngresosRepository implements IIngresoRepository {
         montoNetoPago: Number(row.monto_neto),
         fechaRegistroPago: row.PagoRegistradoEl,
         fechaDeposito: row.FechaDeposito,
+        origenDineroId: Number(row.origenDineroId || 1),
+        observaciones: row.Observaciones ? String(row.Observaciones).trim() : "",
       }));
     } catch (error) {
       throw new Error(

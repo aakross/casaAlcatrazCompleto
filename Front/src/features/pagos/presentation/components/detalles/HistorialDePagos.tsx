@@ -35,11 +35,10 @@ export const HistorialDePagos = ({
     }
   };
 
-  // Suma total de los montos abonados
-  const totalPagado = listadoPagos.reduce(
-    (sum, item) => sum + item.montoNetoPago,
-    0,
-  );
+  // Suma total de los montos abonados en caja/banco
+  const totalPagado = listadoPagos
+    .filter((item) => Number(item.origenDineroId) !== 4)
+    .reduce((sum, item) => sum + item.montoNetoPago, 0);
 
   return (
     <div className="bg-surfacecontainer w-full rounded-2xl p-5 shadow-sm border border-black/5 flex flex-col gap-4 mt-2">
@@ -54,61 +53,81 @@ export const HistorialDePagos = ({
             No hay abonos registrados para esta reservación.
           </div>
         ) : (
-          listadoPagos.map((pago, index) => (
-            <div
-              key={`${pago.id || pago.conceptoDePagoId}-${index}`}
-              className="w-full flex flex-row items-center justify-between bg-white p-3 md:p-4 rounded-xl shadow-xs border border-gray-100 gap-4 hover:shadow-md transition-shadow"
-            >
-              {/* Bloque Izquierdo: Icono e Información del Abono */}
-              <div className="flex items-start gap-2 md:gap-4 min-w-0 flex-1">
-                {/* Icono de billetera */}
-                <div className="bg-tertiary p-2 md:p-3 rounded-xl text-primary flex items-center justify-center shrink-0 mt-0.5">
-                  <Wallet className="w-4 h-4 md:w-5 h-5" />
-                </div>
-
-                {/* Textos Informativos */}
-                <div className="flex flex-col min-w-0">
-                  <span className="font-body font-semibold text-neutral text-xs md:text-base truncate text-black">
-                    {pago.conceptoPago}
-                  </span>
-
-                  <span className="font-label text-[11px] md:text-xs text-neutral mt-0.5">
-                    <span className="font-bold text-secondary">Depósito:</span>{" "}
-                    {formatearFecha(
-                      pago.fechaDeposito || pago.fechaRegistroPago,
-                    )}
-                  </span>
-
-                  {/* 🌟 ACOMODO DE FECHA SECUNDARIA: Cuándo se cargó al sistema de la casa */}
-                  <span className="font-label text-[10px] md:text-[11px] text-neutral/60 mt-0.5 italic">
-                    Registrado el: {formatearFecha(pago.fechaRegistroPago)}
-                  </span>
-
-                  {/* DESGLOSE DE COMISIÓN: Solo aparece si aplicaComisionPago es true */}
-                  {pago.aplicaComisionPago && (
-                    <div className="flex items-center gap-1 mt-1.5 bg-amber-50 border border-amber-200 text-[10px] md:text-xs text-amber-700 px-2 py-0.5 rounded-md w-fit font-medium">
-                      <Info className="w-3 h-3 text-amber-600 shrink-0" />
-                      <span>
-                        Pagado: {formatPrecio(pago.montoBrutoPago)} • Comis: -
-                        {formatPrecio(pago.montoComisionPago)}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Bloque Derecho: Monto Neto Recibido y Botones de Acción */}
-              <div className="flex items-center gap-4 shrink-0">
-                <div className="text-right">
-                  <div className="font-body font-bold text-primary text-sm md:text-lg text-emerald-700 whitespace-nowrap">
-                    +{formatPrecio(pago.montoNetoPago)}
+          listadoPagos.map((pago, index) => {
+            const esDeduccion = Number(pago.origenDineroId) === 4;
+            return (
+              <div
+                key={`${pago.id || pago.conceptoDePagoId}-${index}`}
+                className="w-full flex flex-row items-center justify-between bg-white p-3 md:p-4 rounded-xl shadow-xs border border-gray-100 gap-4 hover:shadow-md transition-shadow"
+              >
+                {/* Bloque Izquierdo: Icono e Información del Abono */}
+                <div className="flex items-start gap-2 md:gap-4 min-w-0 flex-1">
+                  {/* Icono de billetera */}
+                  <div
+                    className={`p-2 md:p-3 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
+                      esDeduccion
+                        ? "bg-amber-100 text-amber-800"
+                        : "bg-tertiary text-primary"
+                    }`}
+                  >
+                    <Wallet className="w-4 h-4 md:w-5 h-5" />
                   </div>
-                  {pago.aplicaComisionPago && (
-                    <div className="text-[10px] text-gray-400 font-medium">
-                      Neto recibido
+
+                  {/* Textos Informativos */}
+                  <div className="flex flex-col min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-body font-semibold text-neutral text-xs md:text-base truncate text-black">
+                        {pago.observaciones || pago.conceptoPago}
+                      </span>
+                      {esDeduccion && (
+                        <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded">
+                          Deducción Operativa
+                        </span>
+                      )}
                     </div>
-                  )}
+
+                    <span className="font-label text-[11px] md:text-xs text-neutral mt-0.5">
+                      <span className="font-bold text-secondary">Fecha:</span>{" "}
+                      {formatearFecha(
+                        pago.fechaDeposito || pago.fechaRegistroPago,
+                      )}
+                    </span>
+
+                    {/* 🌟 ACOMODO DE FECHA SECUNDARIA: Cuándo se cargó al sistema de la casa */}
+                    <span className="font-label text-[10px] md:text-[11px] text-neutral/60 mt-0.5 italic">
+                      Registrado el: {formatearFecha(pago.fechaRegistroPago)}
+                    </span>
+
+                    {/* DESGLOSE DE COMISIÓN: Solo aparece si aplicaComisionPago es true */}
+                    {pago.aplicaComisionPago && (
+                      <div className="flex items-center gap-1 mt-1.5 bg-amber-50 border border-amber-200 text-[10px] md:text-xs text-amber-700 px-2 py-0.5 rounded-md w-fit font-medium">
+                        <Info className="w-3 h-3 text-amber-600 shrink-0" />
+                        <span>
+                          Pagado: {formatPrecio(pago.montoBrutoPago)} • Comis: -
+                          {formatPrecio(pago.montoComisionPago)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
+
+                {/* Bloque Derecho: Monto Neto Recibido y Botones de Acción */}
+                <div className="flex items-center gap-4 shrink-0">
+                  <div className="text-right">
+                    <div
+                      className={`font-body font-bold text-sm md:text-lg whitespace-nowrap ${
+                        esDeduccion ? "text-amber-800" : "text-emerald-700"
+                      }`}
+                    >
+                      {esDeduccion ? "-" : "+"}
+                      {formatPrecio(
+                        esDeduccion ? pago.montoBrutoPago : pago.montoNetoPago,
+                      )}
+                    </div>
+                    <div className="text-[10px] text-gray-400 font-medium">
+                      {esDeduccion ? "Cargo deducido" : pago.aplicaComisionPago ? "Neto recibido" : "Abonado"}
+                    </div>
+                  </div>
 
                 {/* 🌟 ACCIONES DE FILA: Editar y Eliminar Abono */}
                 <div className="flex items-center gap-1 border-l border-gray-100 pl-3">
@@ -138,8 +157,9 @@ export const HistorialDePagos = ({
                 </div>
               </div>
             </div>
-          ))
-        )}
+          );
+        })
+      )}
       </div>
 
       <hr className="border-t-2 border-dashed border-neutral/20 w-full" />

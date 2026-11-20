@@ -203,6 +203,7 @@ BEGIN
     [user_update] INT NULL DEFAULT (NULL),
     [updated_at] DATE NULL DEFAULT (NULL),
     [fecha_deposito] DATE NULL,
+    [observaciones] VARCHAR(200) NULL,
     CONSTRAINT [PK_AAC_Alcatraz_pagos_cliente] PRIMARY KEY ([id])
     );
 END;

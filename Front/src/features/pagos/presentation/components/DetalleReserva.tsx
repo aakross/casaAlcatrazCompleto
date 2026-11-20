@@ -7,6 +7,7 @@ import { CardCostoTotal } from "./detalles/CardCostoTotal";
 import { CardExtras } from "./detalles/CardExtras";
 import { CardGarantia } from "./detalles/CardGarantia";
 import { CardGranTotal } from "./detalles/CardGranTotal";
+import { CardOtrosCargos } from "./detalles/CardOtrosCargos";
 import { HeaderDetalles } from "./detalles/HeaderDetalles";
 import { HistorialDePagos } from "./detalles/HistorialDePagos";
 import { ConfirmarEliminarPagoModal } from "./detalles/ConfirmarEliminarPagoModal";
@@ -31,6 +32,8 @@ export const DetalleReserva = ({ reservaId }: DetalleReservaProps) => {
     totalExtras,
     montoGarantia,
     granTotalEstancia,
+    totalOtrosGastos,
+    conceptosOtrosGastos,
     extrasDesglosados,
     porcentajeComision,
     refrescarPagos,
@@ -123,7 +126,14 @@ export const DetalleReserva = ({ reservaId }: DetalleReservaProps) => {
           <CardGarantia total={montoGarantia} />
 
           <CardGranTotal total={granTotalEstancia} />
-          <DetalleExtras listadoExtras={extrasDesglosados} />
+          <CardOtrosCargos
+            total={totalOtrosGastos}
+            conceptos={conceptosOtrosGastos}
+          />
+
+          <div className="col-span-1 lg:col-span-2">
+            <DetalleExtras listadoExtras={extrasDesglosados} />
+          </div>
         </div>
         <HistorialDePagos
           listadoPagos={pagos}

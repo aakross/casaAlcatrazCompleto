@@ -21,6 +21,8 @@ export interface ActualizarReservaCommand {
   apellidoHuesped?: string | null;
   telefono?: string | null;
   origenReservaId?: number;
+  porcentajeComision?: number;
+  montoGarantia?: number;
 }
 
 export class ActualizarReservaUseCase {
@@ -89,6 +91,8 @@ export class ActualizarReservaUseCase {
       totalDiasReservacion: Number(command.totalDiasReservacion),
       precioNoche: Number(command.precioNoche),
       montoTotal: nuevoMontoTotalHospedaje,
+      porcentajeComision: command.porcentajeComision !== undefined ? Number(command.porcentajeComision) : undefined,
+      montoGarantia: command.montoGarantia !== undefined ? Number(command.montoGarantia) : undefined,
       personasHospedadas: Number(command.personasHospedadas),
       usuarioId: Number(command.usuarioId),
       extras: extrasProcesados, // 🆕 Inyectamos los extras recalculados con sus montos y comisiones reales

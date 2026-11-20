@@ -78,9 +78,9 @@ export class ResumenRepository implements IResumenRepository {
         // 1. FINANZAS REALES COMPLETA (🆕 Añadimos lo proyectado en reservaciones vs lo cobrado en caja)
         pool.request().query(`
      SELECT 
-    -- Caja Cobrada Real (Historial de abonos acumulados en bruto)
-    ISNULL((SELECT SUM(monto_bruto) FROM AAC_Alcatraz_pagos_cliente), 0) AS [Total Bruto Cobrado],
-    ISNULL((SELECT SUM(monto_neto) FROM AAC_Alcatraz_pagos_cliente), 0) AS [Total Neto Cobrado],
+    -- Caja Cobrada Real (Historial de abonos monetarios acumulados en bruto)
+    ISNULL((SELECT SUM(monto_bruto) FROM AAC_Alcatraz_pagos_cliente WHERE origen_dinero_id <> 4), 0) AS [Total Bruto Cobrado],
+    ISNULL((SELECT SUM(monto_neto) FROM AAC_Alcatraz_pagos_cliente WHERE origen_dinero_id <> 4), 0) AS [Total Neto Cobrado],
     ISNULL((SELECT SUM(monto_total) FROM AAC_Alcatraz_reservaciones), 0) AS [Hospedaje Proyectado],
     ISNULL((SELECT SUM(monto_comision) FROM AAC_Alcatraz_reservaciones), 0) AS [Total Comisiones],
     ISNULL((SELECT SUM(monto_neto) FROM AAC_Alcatraz_reservaciones), 0) AS [Utilidad Proyectada Libros]

@@ -9,6 +9,7 @@ export interface Pago {
   aplicaComision: boolean;
   montoComision: number;
   fechaDeposito: string;
+  observaciones?: string;
 }
 
 export interface IPagoRepository {
